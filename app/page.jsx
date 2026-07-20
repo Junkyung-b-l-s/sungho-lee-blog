@@ -20,15 +20,10 @@ export default function HomePage() {
   return (
     <>
       <section className="archive-hero shell">
-        <p className="eyebrow">JUNKYUNG KIM · PERSONAL ARCHIVE</p>
-        <h1>
-          생각을 쓰고,
-          <br />
-          오래 보관합니다.
-        </h1>
+        <p className="eyebrow">PERSONAL ARCHIVE</p>
+        <h1>생각과 마음</h1>
         <p className="hero-copy">
-          지금의 문장과 감각을 잃지 않도록 남겨둡니다. 나중의 제가 다시
-          찾아와 읽고 싶은 공간입니다.
+          지금의 생각과 감각을 다시 만날 수 있도록 적어둡니다.
         </p>
       </section>
 

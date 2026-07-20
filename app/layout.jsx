@@ -1,14 +1,15 @@
 import Link from "next/link";
 import localFont from "next/font/local";
+import SiteHeader from "../components/site-header";
 import "./globals.css";
 
 const siteUrl = "https://junkyung.kim";
 
-const chosunMyungjo = localFont({
-  src: "../node_modules/@noonnu/chosunilbo-myungjo/fonts/chosunilbomyungjo-normal.woff",
-  weight: "400",
+const sourceHanSerif = localFont({
+  src: "./fonts/source-han-serif-kr-subset.woff2",
+  weight: "250 900",
   style: "normal",
-  variable: "--font-chosun-myungjo",
+  variable: "--font-source-han-serif",
   display: "swap",
 });
 
@@ -35,22 +36,12 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="ko" className={chosunMyungjo.variable}>
+    <html lang="ko" className={sourceHanSerif.variable}>
       <body>
         <a className="skip-link" href="#content">
           본문으로 건너뛰기
         </a>
-        <header className="site-header">
-          <div className="shell header-inner">
-            <Link className="wordmark" href="/" aria-label="김준경 홈">
-              JK Kim
-            </Link>
-            <nav aria-label="주요 메뉴">
-              <Link href="/writing">기록</Link>
-              <Link href="/topics">주제</Link>
-            </nav>
-          </div>
-        </header>
+        <SiteHeader />
         <main id="content">{children}</main>
         <footer className="site-footer">
           <div className="shell footer-inner">

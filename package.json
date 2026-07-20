@@ -8,7 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@noonnu/chosunilbo-myungjo": "^0.1.0",
+    "@fontpkg/source-han-serif-kr-vf": "^2.3.2",
     "gray-matter": "4.0.3",
     "marked": "18.0.6",
     "next": "16.2.10",
