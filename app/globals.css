@@ -1,10 +1,10 @@
 :root {
-  --paper: #faf9f5;
-  --ink: #24221f;
-  --muted: #746f66;
-  --faint: #a49e94;
-  --line: #ddd8cf;
-  --accent: #8d4b43;
+  --paper: #fafafa;
+  --ink: #15191d;
+  --muted: #68717a;
+  --faint: #9ca3a8;
+  --line: #dadde0;
+  --accent: #163f63;
   --serif: var(--font-source-han-serif), "AppleMyungjo", "Batang", serif;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo",
     "Noto Sans KR", sans-serif;

@@ -49,7 +49,7 @@ export default async function TopicPage({ params }) {
               <h2>
                 <Link href={`/writing/${post.slug}`}>{post.title}</Link>
               </h2>
-              <p>{post.description}</p>
+              {post.description ? <p>{post.description}</p> : null}
             </div>
             <span className="record-arrow" aria-hidden="true">→</span>
           </article>

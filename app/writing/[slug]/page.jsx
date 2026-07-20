@@ -73,7 +73,9 @@ export default async function PostPage({ params }) {
           </time>
         </div>
         <h1>{post.title}</h1>
-        <p className="article-description">{post.description}</p>
+        {post.description ? (
+          <p className="article-description">{post.description}</p>
+        ) : null}
       </header>
 
       <div className="prose" dangerouslySetInnerHTML={{ __html: post.html }} />

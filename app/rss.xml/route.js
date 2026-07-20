@@ -19,7 +19,7 @@ export function GET() {
           <title>${escapeXml(post.title)}</title>
           <link>${siteUrl}/writing/${post.slug}</link>
           <guid>${siteUrl}/writing/${post.slug}</guid>
-          <description>${escapeXml(post.description)}</description>
+          ${post.description ? `<description>${escapeXml(post.description)}</description>` : ""}
           <pubDate>${new Date(`${post.publishedAt}T00:00:00+09:00`).toUTCString()}</pubDate>
         </item>`,
     )

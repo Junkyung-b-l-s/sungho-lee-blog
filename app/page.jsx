@@ -43,7 +43,7 @@ export default function HomePage() {
                 <h3>
                   <Link href={`/writing/${post.slug}`}>{post.title}</Link>
                 </h3>
-                <p>{post.description}</p>
+                {post.description ? <p>{post.description}</p> : null}
               </div>
               <span className="record-topic">{post.topic}</span>
               <span className="record-arrow" aria-hidden="true">
