@@ -71,11 +71,10 @@ a:focus-visible {
 }
 
 .wordmark {
-  font-family: var(--serif);
-  font-size: 0.88rem;
-  font-weight: 400;
-  letter-spacing: 0.1em;
-  font-synthesis: none;
+  font-family: var(--sans);
+  font-size: 1.02rem;
+  font-weight: 750;
+  letter-spacing: -0.035em;
 }
 
 nav {

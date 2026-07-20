@@ -42,8 +42,8 @@ export default function RootLayout({ children }) {
         </a>
         <header className="site-header">
           <div className="shell header-inner">
-            <Link className="wordmark" href="/" aria-label="Junkyung Kim 홈">
-              JUNKYUNG KIM
+            <Link className="wordmark" href="/" aria-label="김준경 홈">
+              JK Kim
             </Link>
             <nav aria-label="주요 메뉴">
               <Link href="/writing">기록</Link>
