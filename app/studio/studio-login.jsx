@@ -29,7 +29,7 @@ export default function StudioLogin() {
   }
 
   return (
-    <section className="studio-gate">
+    <section className="shell studio-gate">
       <p className="eyebrow">PRIVATE STUDIO</p>
       <h1>글 쓰는 곳</h1>
       <p>원문을 보존하고, 필요한 만큼만 다듬어 발행합니다.</p>

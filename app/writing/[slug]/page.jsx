@@ -62,7 +62,7 @@ export default async function PostPage({ params }) {
   };
 
   return (
-    <article className="article-shell">
+    <article className="shell article-shell">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}

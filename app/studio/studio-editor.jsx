@@ -238,7 +238,7 @@ export default function StudioEditor() {
   }
 
   return (
-    <section className="studio-page">
+    <section className="shell studio-page">
       <header className="studio-header">
         <div>
           <p className="eyebrow">PRIVATE STUDIO</p>

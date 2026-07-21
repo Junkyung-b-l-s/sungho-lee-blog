@@ -16,7 +16,7 @@ export const metadata = {
 export default async function StudioPage() {
   if (!studioIsConfigured()) {
     return (
-      <section className="studio-gate">
+      <section className="shell studio-gate">
         <p className="eyebrow">PRIVATE STUDIO</p>
         <h1>설정이 필요합니다</h1>
         <p>
