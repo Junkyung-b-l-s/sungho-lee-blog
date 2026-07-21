@@ -23,6 +23,9 @@ export default function SiteHeader() {
         <nav aria-label="주요 메뉴">
           <Link href="/writing">기록</Link>
           <Link href="/topics">주제</Link>
+          <Link className="studio-nav-link" href="/studio">
+            Studio
+          </Link>
         </nav>
       </div>
     </header>
