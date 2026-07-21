@@ -27,7 +27,7 @@ export default function TopicsPage() {
           >
             <span className="topic-index">{String(index + 1).padStart(2, "0")}</span>
             <h2>{topic.name}</h2>
-            <span>기록 {topic.count}개 →</span>
+            <span className="topic-count">글 {topic.count}개</span>
           </Link>
         ))}
       </div>
