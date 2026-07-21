@@ -25,10 +25,16 @@ export async function generateMetadata({ params }) {
     openGraph: {
       title: post.title,
       description: post.description,
+      url: `/writing/${post.slug}`,
       type: "article",
       publishedTime: post.publishedAt,
       modifiedTime: post.updatedAt,
       authors: ["Junkyung Kim"],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: post.description,
     },
   };
 }

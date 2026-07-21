@@ -19,14 +19,23 @@ export const metadata = {
     default: "Junkyung Kim",
     template: "%s — Junkyung Kim",
   },
-  description: "쓰고, 보관하고, 다시 읽는 김준경의 개인 아카이브.",
+  description: "쓰고, 보관하는 김준경 아카이브.",
+  authors: [{ name: "Junkyung Kim", url: siteUrl }],
+  creator: "Junkyung Kim",
+  publisher: "Junkyung Kim",
+  alternates: { canonical: "/" },
   openGraph: {
     title: "Junkyung Kim",
-    description: "쓰고, 보관하고, 다시 읽는 김준경의 개인 아카이브.",
+    description: "쓰고, 보관하는 김준경 아카이브.",
     url: siteUrl,
     siteName: "Junkyung Kim",
     locale: "ko_KR",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Junkyung Kim",
+    description: "쓰고, 보관하는 김준경 아카이브.",
   },
 };
 

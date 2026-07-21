@@ -474,6 +474,27 @@ nav a:hover,
   margin-bottom: 0;
 }
 
+.prose blockquote {
+  margin: 0 0 2.8em;
+  padding: 1.5em 1.65em 1.55em;
+  background: color-mix(in srgb, var(--accent) 5%, var(--paper));
+  color: color-mix(in srgb, var(--ink) 88%, var(--accent));
+  font-size: 0.98em;
+  line-height: 1.9;
+}
+
+.prose blockquote p {
+  margin: 0;
+}
+
+.prose blockquote p + p {
+  margin-top: 0.8em;
+  color: var(--accent);
+  font-family: var(--sans);
+  font-size: 0.68em;
+  letter-spacing: 0.025em;
+}
+
 .article-footer {
   display: flex;
   max-width: 700px;
