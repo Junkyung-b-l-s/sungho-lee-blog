@@ -29,6 +29,8 @@ const emptyDraft = {
   suggestions: [],
   subtitleCandidates: [],
   chatGptResponse: "",
+  sourceOriginalPath: "",
+  sourcePublishedPath: "",
   stage: "write",
 };
 
@@ -71,6 +73,9 @@ export default function StudioEditor() {
   const [pending, setPending] = useState("");
   const [message, setMessage] = useState(null);
   const [publishError, setPublishError] = useState("");
+  const [publishedPosts, setPublishedPosts] = useState([]);
+  const [selectedPostPath, setSelectedPostPath] = useState("");
+  const [loadingPosts, setLoadingPosts] = useState(false);
   const characterCount = useMemo(
     () => draft.original.replace(/\s/g, "").length,
     [draft.original],
@@ -105,6 +110,44 @@ export default function StudioEditor() {
       chatGptResponse: "",
     }));
     setMessage(null);
+  }
+
+  async function loadPublishedPosts() {
+    setLoadingPosts(true);
+    setMessage(null);
+    try {
+      const response = await fetch("/api/studio/posts", { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "발행 글을 불러오지 못했습니다.");
+      setPublishedPosts(result.posts || []);
+      setSelectedPostPath(result.posts?.[0]?.sourcePublishedPath || "");
+      if (!result.posts?.length) {
+        setMessage({ type: "error", text: "수정할 발행 글이 없습니다." });
+      }
+    } catch (error) {
+      setMessage({ type: "error", text: error.message || "발행 글을 불러오지 못했습니다." });
+    } finally {
+      setLoadingPosts(false);
+    }
+  }
+
+  function editSelectedPost() {
+    const post = publishedPosts.find(
+      (candidate) => candidate.sourcePublishedPath === selectedPostPath,
+    );
+    if (!post) {
+      setMessage({ type: "error", text: "수정할 글을 선택해 주세요." });
+      return;
+    }
+
+    setDraft({
+      ...emptyDraft,
+      ...post,
+      stage: "publish",
+      publishedAt: post.publishedAt || todayInSeoul(),
+    });
+    setMessage({ type: "success", text: "발행된 글을 불러왔습니다. 수정 후 저장해 주세요." });
+    setPublishError("");
   }
 
   async function prepareRevision(openChatGpt = false) {
@@ -200,7 +243,14 @@ export default function StudioEditor() {
       setPublishError(validationError);
       return;
     }
-    if (!window.confirm("이 승인본을 공개하고 배포하시겠습니까?")) return;
+    const editing = Boolean(draft.sourcePublishedPath);
+    if (
+      !window.confirm(
+        editing
+          ? "수정한 내용을 저장하고 다시 배포하시겠습니까?"
+          : "이 승인본을 공개하고 배포하시겠습니까?",
+      )
+    ) return;
 
     setPending("publish");
     setMessage(null);
@@ -226,7 +276,9 @@ export default function StudioEditor() {
       window.localStorage.removeItem(STORAGE_KEY);
       setMessage({
         type: "success",
-        text: "GitHub에 원문과 승인본을 저장했습니다. 배포가 시작되었습니다.",
+        text: editing
+          ? "수정 내용을 GitHub에 저장했습니다. 재배포가 시작되었습니다."
+          : "GitHub에 원문과 승인본을 저장했습니다. 배포가 시작되었습니다.",
         publicUrl: result.publicUrl,
         commitUrl: result.commitUrl,
       });
@@ -296,6 +348,40 @@ export default function StudioEditor() {
 
       {draft.stage === "write" ? (
         <div className="studio-panel">
+          <section className="studio-existing-posts">
+            <div>
+              <div>
+                <strong>발행된 글 수정</strong>
+                <span>기존 글을 불러와 제목·주제·날짜·부제목과 본문을 수정합니다.</span>
+              </div>
+              <button
+                className="studio-secondary-button"
+                type="button"
+                onClick={loadPublishedPosts}
+                disabled={loadingPosts}
+              >
+                {loadingPosts ? "불러오는 중…" : "발행 글 불러오기"}
+              </button>
+            </div>
+            {publishedPosts.length ? (
+              <div>
+                <select
+                  aria-label="수정할 발행 글"
+                  value={selectedPostPath}
+                  onChange={(event) => setSelectedPostPath(event.target.value)}
+                >
+                  {publishedPosts.map((post) => (
+                    <option key={post.sourcePublishedPath} value={post.sourcePublishedPath}>
+                      {post.publishedAt} · {post.title}
+                    </option>
+                  ))}
+                </select>
+                <button className="studio-primary-button" type="button" onClick={editSelectedPost}>
+                  선택한 글 수정
+                </button>
+              </div>
+            ) : null}
+          </section>
           <label className="studio-field">
             <span>제목</span>
             <input
@@ -434,7 +520,13 @@ export default function StudioEditor() {
           <div className="studio-actions studio-publish-actions">
             <button className="studio-secondary-button" type="button" onClick={() => update("stage", "review")}>윤문본 다시 보기</button>
             <button className="studio-primary-button" type="button" onClick={publish} disabled={pending === "publish"}>
-              {pending === "publish" ? "발행하는 중…" : "승인 및 발행"}
+              {pending === "publish"
+                ? draft.sourcePublishedPath
+                  ? "저장하는 중…"
+                  : "발행하는 중…"
+                : draft.sourcePublishedPath
+                  ? "수정 저장"
+                  : "승인 및 발행"}
             </button>
           </div>
         </div>

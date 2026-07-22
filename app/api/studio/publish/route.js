@@ -1,14 +1,20 @@
 import { cookies } from "next/headers";
-import matter from "gray-matter";
 import { NextResponse } from "next/server";
 import { STUDIO_COOKIE, verifyStudioSession } from "../../../../lib/studio-auth";
+import { buildStudioPostFiles } from "../../../../lib/studio-content";
 import {
   assertSlugAvailable,
   publishFiles,
+  updateFiles,
 } from "../../../../lib/studio-github";
 
-function safeFilename(value) {
-  return value.replace(/[\\/:*?"<>|]/g, "").replace(/\s+/g, "").slice(0, 60);
+function todayInSeoul() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
 export async function POST(request) {
@@ -41,41 +47,31 @@ export async function POST(request) {
       { status: 400 },
     );
   }
-  if (!revised.includes(subtitle)) {
-    return NextResponse.json(
-      { error: "핵심 문장은 승인본에 실제로 존재하는 문장이어야 합니다." },
-      { status: 400 },
-    );
-  }
-
-  const filename = `${publishedAt.replaceAll("-", "")}_${safeFilename(title)}.md`;
-  const originalPath = `content/originals/${filename}`;
-  const publishedPath = `content/published/${filename}`;
-  const originalContent = `${original}\n`;
-  const publishedContent = matter.stringify(`${revised}\n`, {
-    title,
-    slug,
-    subtitle,
-    publishedAt,
-    updatedAt: publishedAt,
-    topic,
-    type: "essay",
-    visibility: "public",
-    original: `../originals/${filename}`,
-  });
-
   try {
-    await assertSlugAvailable(slug);
-    const commit = await publishFiles({
+    const postFiles = buildStudioPostFiles({
+      ...data,
       title,
-      files: [
-        { path: originalPath, content: originalContent },
-        { path: publishedPath, content: publishedContent },
-      ],
+      original,
+      revised,
+      subtitle,
+      topic,
+      slug,
+      publishedAt,
+      updatedAt: data.sourcePublishedPath ? todayInSeoul() : publishedAt,
+    });
+    await assertSlugAvailable(
+      slug,
+      postFiles.editing ? postFiles.publishedPath : "",
+    );
+    const save = postFiles.editing ? updateFiles : publishFiles;
+    const commit = await save({
+      title,
+      files: postFiles.files,
     });
 
     return NextResponse.json({
       ok: true,
+      editing: postFiles.editing,
       ...commit,
       publicUrl: `https://junkyung.kim/writing/${slug}`,
     });

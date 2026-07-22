@@ -65,3 +65,8 @@ test("lists missing publication fields", () => {
 test("accepts a complete valid publication draft", () => {
   assert.equal(validatePublishDraft(completeDraft), "");
 });
+
+test("accepts a manually written subtitle that is not copied from the body", () => {
+  const draft = { ...completeDraft, subtitle: "내가 직접 정한 부제목" };
+  assert.equal(validatePublishDraft(draft), "");
+});
