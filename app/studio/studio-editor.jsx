@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  looksLikeStructuredResponse,
+  parseEditorialResponse,
+  validatePublishDraft,
+} from "../../lib/studio-draft";
 
 const STORAGE_KEY = "junkyung-studio-draft-v1";
 
@@ -60,41 +65,12 @@ function editorialPrompt(title, original) {
 ${original.trim()}`;
 }
 
-function parseEditorialResponse(value) {
-  const cleaned = value
-    .trim()
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```$/, "");
-  const result = JSON.parse(cleaned);
-
-  if (!result.revisedText || typeof result.revisedText !== "string") {
-    throw new Error("윤문본을 찾지 못했습니다.");
-  }
-
-  return {
-    revised: result.revisedText.trim(),
-    suggestions: Array.isArray(result.suggestions)
-      ? result.suggestions.filter(
-          (item) => item?.original && item?.proposed && item?.reason,
-        )
-      : [],
-    subtitleCandidates: Array.isArray(result.subtitleCandidates)
-      ? result.subtitleCandidates.filter(
-          (candidate) =>
-            typeof candidate === "string" &&
-            result.revisedText.includes(candidate),
-        )
-      : [],
-    topic: typeof result.suggestedTopic === "string" ? result.suggestedTopic : "",
-    slug: typeof result.suggestedSlug === "string" ? result.suggestedSlug : "",
-  };
-}
-
 export default function StudioEditor() {
   const [draft, setDraft] = useState(emptyDraft);
   const [loaded, setLoaded] = useState(false);
   const [pending, setPending] = useState("");
   const [message, setMessage] = useState(null);
+  const [publishError, setPublishError] = useState("");
   const characterCount = useMemo(
     () => draft.original.replace(/\s/g, "").length,
     [draft.original],
@@ -115,6 +91,7 @@ export default function StudioEditor() {
   function update(field, value) {
     setDraft((current) => ({ ...current, [field]: value }));
     setMessage(null);
+    setPublishError("");
   }
 
   function updateOriginal(value) {
@@ -188,41 +165,76 @@ export default function StudioEditor() {
       setMessage({ type: "error", text: "사용할 답변을 먼저 붙여 넣어 주세요." });
       return;
     }
+
+    try {
+      const result = parseEditorialResponse(draft.chatGptResponse);
+      setDraft((current) => ({
+        ...current,
+        ...result,
+        subtitle: result.subtitleCandidates[0] || "",
+      }));
+      setMessage({ type: "success", text: "JSON 답변에서 윤문 제안을 불러왔습니다." });
+      return;
+    } catch {
+      if (looksLikeStructuredResponse(draft.chatGptResponse)) {
+        setMessage({
+          type: "error",
+          text: "JSON 형식의 답변 전체를 윤문본으로 사용할 수 없습니다. 답변 전체를 다시 복사해 ‘윤문 제안 불러오기’를 눌러 주세요.",
+        });
+        return;
+      }
+    }
+
     setDraft((current) => ({
       ...current,
       revised: current.chatGptResponse.trim(),
       suggestions: [],
       subtitleCandidates: [],
     }));
-    setMessage({ type: "success", text: "붙여 넣은 내용을 윤문본으로 가져왔습니다." });
+    setMessage({ type: "success", text: "붙여 넣은 일반 텍스트를 윤문본으로 가져왔습니다." });
   }
 
   async function publish() {
+    const validationError = validatePublishDraft(draft);
+    if (validationError) {
+      setPublishError(validationError);
+      return;
+    }
     if (!window.confirm("이 승인본을 공개하고 배포하시겠습니까?")) return;
 
     setPending("publish");
     setMessage(null);
-    const response = await fetch("/api/studio/publish", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(draft),
-    });
-    const result = await response.json();
-    setPending("");
+    setPublishError("");
 
-    if (!response.ok) {
-      setMessage({ type: "error", text: result.error || "발행하지 못했습니다." });
-      return;
+    try {
+      const response = await fetch("/api/studio/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(draft),
+      });
+      const contentType = response.headers.get("content-type") || "";
+      const result = contentType.includes("application/json")
+        ? await response.json()
+        : {};
+
+      if (!response.ok) {
+        setPublishError(result.error || `발행하지 못했습니다. (${response.status})`);
+        return;
+      }
+
+      setDraft({ ...emptyDraft, publishedAt: todayInSeoul() });
+      window.localStorage.removeItem(STORAGE_KEY);
+      setMessage({
+        type: "success",
+        text: "GitHub에 원문과 승인본을 저장했습니다. 배포가 시작되었습니다.",
+        publicUrl: result.publicUrl,
+        commitUrl: result.commitUrl,
+      });
+    } catch {
+      setPublishError("네트워크 오류로 발행하지 못했습니다. 연결을 확인한 뒤 다시 시도해 주세요.");
+    } finally {
+      setPending("");
     }
-
-    setDraft({ ...emptyDraft, publishedAt: todayInSeoul() });
-    window.localStorage.removeItem(STORAGE_KEY);
-    setMessage({
-      type: "success",
-      text: "GitHub에 원문과 승인본을 저장했습니다. 배포가 시작되었습니다.",
-      publicUrl: result.publicUrl,
-      commitUrl: result.commitUrl,
-    });
   }
 
   function resetDraft() {
@@ -414,6 +426,11 @@ export default function StudioEditor() {
             <p>{draft.subtitle || "핵심 문장"}</p>
             <div>{draft.revised}</div>
           </aside>
+          {publishError ? (
+            <div className="studio-notice error" role="alert">
+              <p>{publishError}</p>
+            </div>
+          ) : null}
           <div className="studio-actions studio-publish-actions">
             <button className="studio-secondary-button" type="button" onClick={() => update("stage", "review")}>윤문본 다시 보기</button>
             <button className="studio-primary-button" type="button" onClick={publish} disabled={pending === "publish"}>
