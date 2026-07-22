@@ -1,12 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPostsByTopic, getTopics } from "../../../lib/posts";
-
-const dateFormatter = new Intl.DateTimeFormat("ko-KR", {
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-});
+import { formatKoreanDate } from "../../../lib/date";
 
 export function generateStaticParams() {
   return getTopics().map((topic) => ({ topic: topic.name }));
@@ -43,7 +38,7 @@ export default async function TopicPage({ params }) {
         {posts.map((post) => (
           <article className="record-row" key={post.slug}>
             <time dateTime={post.publishedAt}>
-              {dateFormatter.format(new Date(`${post.publishedAt}T00:00:00+09:00`))}
+              {formatKoreanDate(post.publishedAt)}
             </time>
             <div className="record-copy">
               <h2>

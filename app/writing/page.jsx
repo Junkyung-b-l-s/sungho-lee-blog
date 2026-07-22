@@ -1,16 +1,12 @@
 import Link from "next/link";
 import { getAllPosts, getYears } from "../../lib/posts";
+import { formatKoreanMonthDay } from "../../lib/date";
 
 export const metadata = {
   title: "기록",
   description: "김준경의 생각과 기록을 시간순으로 모은 아카이브.",
   alternates: { canonical: "/writing" },
 };
-
-const shortDateFormatter = new Intl.DateTimeFormat("ko-KR", {
-  month: "long",
-  day: "numeric",
-});
 
 export default function WritingPage() {
   const posts = getAllPosts();
@@ -35,9 +31,7 @@ export default function WritingPage() {
                 .map((post) => (
                   <article className="archive-record" key={post.slug}>
                     <time dateTime={post.publishedAt}>
-                      {shortDateFormatter.format(
-                        new Date(`${post.publishedAt}T00:00:00+09:00`),
-                      )}
+                      {formatKoreanMonthDay(post.publishedAt)}
                     </time>
                     <h3>
                       <Link href={`/writing/${post.slug}`}>{post.title}</Link>

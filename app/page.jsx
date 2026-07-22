@@ -1,15 +1,10 @@
 import Link from "next/link";
 import { getAllPosts, getTopics, getYears } from "../lib/posts";
+import { formatKoreanDate } from "../lib/date";
 
 export const metadata = {
   alternates: { canonical: "/" },
 };
-
-const dateFormatter = new Intl.DateTimeFormat("ko-KR", {
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-});
 
 export default function HomePage() {
   const posts = getAllPosts();
@@ -37,7 +32,7 @@ export default function HomePage() {
           {recentPosts.map((post) => (
             <article className="record-row" key={post.slug}>
               <time dateTime={post.publishedAt}>
-                {dateFormatter.format(new Date(`${post.publishedAt}T00:00:00+09:00`))}
+                {formatKoreanDate(post.publishedAt)}
               </time>
               <div className="record-copy">
                 <h3>

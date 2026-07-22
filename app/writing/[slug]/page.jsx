@@ -1,12 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAllPosts, getPost } from "../../../lib/posts";
-
-const dateFormatter = new Intl.DateTimeFormat("ko-KR", {
-  year: "numeric",
-  month: "long",
-  day: "numeric",
-});
+import { formatKoreanDate } from "../../../lib/date";
 
 export function generateStaticParams() {
   return getAllPosts().map((post) => ({ slug: post.slug }));
@@ -75,7 +70,7 @@ export default async function PostPage({ params }) {
           <Link href={`/topics/${encodeURIComponent(post.topic)}`}>{post.topic}</Link>
           <span aria-hidden="true">·</span>
           <time dateTime={post.publishedAt}>
-            {dateFormatter.format(new Date(`${post.publishedAt}T00:00:00+09:00`))}
+            {formatKoreanDate(post.publishedAt)}
           </time>
         </div>
         <h1>{post.title}</h1>
@@ -89,7 +84,7 @@ export default async function PostPage({ params }) {
       <footer className="article-footer">
         <div>
           <span>처음 기록한 날</span>
-          <strong>{dateFormatter.format(new Date(`${post.publishedAt}T00:00:00+09:00`))}</strong>
+          <strong>{formatKoreanDate(post.publishedAt)}</strong>
         </div>
         <Link href="/writing">아카이브로 돌아가기 →</Link>
       </footer>
