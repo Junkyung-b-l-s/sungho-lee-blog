@@ -6,6 +6,7 @@ import {
   parseEditorialResponse,
   validatePublishDraft,
 } from "../../lib/studio-draft";
+import { buildEditorialPrompt } from "../../lib/studio-prompt";
 
 const STORAGE_KEY = "junkyung-studio-draft-v1";
 
@@ -33,39 +34,6 @@ const emptyDraft = {
   sourcePublishedPath: "",
   stage: "write",
 };
-
-function editorialPrompt(title, original) {
-  return `당신은 김준경의 개인 아카이브를 돕는 한국어 편집자입니다.
-
-목표:
-- 원문의 관점, 문장 감각, 개인적인 어휘, 리듬, 분량과 주장을 우선 보존합니다.
-- 명백한 맞춤법 오류, 어색한 호응, 불필요한 반복만 최소한으로 다듬습니다.
-- 새로운 주장, 사례, 비유, 감정, 결론을 추가하지 않습니다.
-- 원문의 개성을 표준적인 모범 문장으로 평준화하지 않습니다.
-- 먼저 수정하면 좋을 부분을 판단하고, 제한적으로 윤문한 후보를 만듭니다.
-- subtitleCandidates에는 revisedText에 정확히 존재하는 핵심 문장만 최대 3개 고릅니다.
-- suggestedSlug는 짧은 영문 kebab-case로 작성합니다.
-
-반드시 설명이나 마크다운 코드 펜스 없이 아래 JSON 형식만 출력하세요.
-{
-  "revisedText": "제한적으로 윤문한 전체 원고",
-  "suggestions": [
-    {
-      "original": "원문의 해당 표현",
-      "proposed": "제안 표현",
-      "reason": "수정 이유"
-    }
-  ],
-  "subtitleCandidates": ["승인본에 실제로 존재하는 핵심 문장"],
-  "suggestedTopic": "간결한 주제",
-  "suggestedSlug": "short-english-slug"
-}
-
-제목: ${title.trim()}
-
-원문:
-${original.trim()}`;
-}
 
 export default function StudioEditor() {
   const [draft, setDraft] = useState(emptyDraft);
@@ -162,7 +130,7 @@ export default function StudioEditor() {
 
     try {
       await navigator.clipboard.writeText(
-        editorialPrompt(draft.title, draft.original),
+        buildEditorialPrompt(draft.title, draft.original),
       );
       setDraft((current) => ({ ...current, stage: "review" }));
       setMessage({

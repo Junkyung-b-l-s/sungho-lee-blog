@@ -42,6 +42,97 @@ test("extracts JSON surrounded by explanatory text", () => {
   assert.equal(result.revised, validResponse.revisedText);
 });
 
+test("repairs unescaped dialogue quotes in an otherwise structured response", () => {
+  const malformed = String.raw`{
+    "revisedText": ""도하는 바람반이야."\n\n"도하 애기야"",
+    "suggestions": [
+      {
+        "original": "" 또하 바람반이야."",
+        "proposed": ""또하 바람반이야."",
+        "reason": "앞 공백 삭제"
+      }
+    ],
+    "subtitleCandidates": [""도하는 바람반이야."", ""도하 애기야""],
+    "suggestedTopic": "도하",
+    "suggestedSlug": "doha-wind-class"
+  }`;
+
+  const result = parseEditorialResponse(malformed);
+  assert.equal(result.revised, `"도하는 바람반이야."\n\n"도하 애기야"`);
+  assert.deepEqual(result.subtitleCandidates, [
+    `"도하는 바람반이야."`,
+    `"도하 애기야"`,
+  ]);
+  assert.equal(result.suggestions[0].proposed, `"또하 바람반이야."`);
+});
+
+test("repairs non-breaking indentation, raw line breaks, and trailing commas", () => {
+  const malformed = `{
+\u00a0 "revisedText": "첫 줄
+둘째 줄",
+\u00a0 "suggestions": [],
+\u00a0 "subtitleCandidates": ["둘째 줄",],
+\u00a0 "suggestedTopic": "기록",
+\u00a0 "suggestedSlug": "two-lines",
+}`;
+
+  const result = parseEditorialResponse(malformed);
+  assert.equal(result.revised, "첫 줄\n둘째 줄");
+  assert.deepEqual(result.subtitleCandidates, ["둘째 줄"]);
+});
+
+test("preserves a non-breaking space inside prose while repairing outer JSON", () => {
+  const malformed = `{
+    "revisedText": "도하\u00a0바람반",
+    "suggestions": [],
+    "subtitleCandidates": [],
+    "suggestedTopic": "도하",
+    "suggestedSlug": "doha",
+  }`;
+
+  const result = parseEditorialResponse(malformed);
+  assert.equal(result.revised, "도하\u00a0바람반");
+});
+
+test("keeps a comma after an unescaped quote inside prose", () => {
+  const malformed = String.raw`{
+    "revisedText": "그는 "안녕", 그리고 웃었다.",
+    "suggestions": [],
+    "subtitleCandidates": [],
+    "suggestedTopic": "기록",
+    "suggestedSlug": "hello"
+  }`;
+
+  const result = parseEditorialResponse(malformed);
+  assert.equal(result.revised, `그는 "안녕", 그리고 웃었다.`);
+});
+
+test("repairs consecutive quoted phrases separated by a comma", () => {
+  const malformed = String.raw`{
+    "revisedText": "그는 "사과", "배"라고 말했다.",
+    "suggestions": [],
+    "subtitleCandidates": [],
+    "suggestedTopic": "기록",
+    "suggestedSlug": "fruit"
+  }`;
+
+  const result = parseEditorialResponse(malformed);
+  assert.equal(result.revised, `그는 "사과", "배"라고 말했다.`);
+});
+
+test("repairs a list of three unescaped quoted phrases", () => {
+  const malformed = String.raw`{
+    "revisedText": "그는 "사과", "배", "포도"를 골랐다.",
+    "suggestions": [],
+    "subtitleCandidates": [],
+    "suggestedTopic": "기록",
+    "suggestedSlug": "fruit-list"
+  }`;
+
+  const result = parseEditorialResponse(malformed);
+  assert.equal(result.revised, `그는 "사과", "배", "포도"를 골랐다.`);
+});
+
 test("keeps only subtitle candidates found in the revised text", () => {
   const result = parseEditorialResponse(JSON.stringify(validResponse));
   assert.deepEqual(result.subtitleCandidates, ["기다림 끝에 열매가 맺혔다."]);
