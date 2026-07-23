@@ -397,7 +397,7 @@ export default function StudioEditor() {
               </ol>
               <label className="studio-field">
                 <span>윤문 프롬프트</span>
-                <textarea className="studio-prompt-preview" value={editorialPrompt(draft.title, draft.original)} readOnly />
+                <textarea className="studio-prompt-preview" value={buildEditorialPrompt(draft.title, draft.original)} readOnly />
               </label>
               <div className="studio-handoff-buttons">
                 <button className="studio-secondary-button" type="button" onClick={() => prepareRevision(false)}>프롬프트 복사</button>
