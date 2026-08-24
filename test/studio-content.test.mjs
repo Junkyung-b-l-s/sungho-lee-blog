@@ -46,6 +46,29 @@ test("editing never includes the preserved original in files to update", () => {
   ]);
 });
 
+test("publication includes referenced WebP assets in the same commit", () => {
+  const path = "public/media/posts/123e4567-e89b-42d3-a456-426614174000.webp";
+  const url = "/media/posts/123e4567-e89b-42d3-a456-426614174000.webp";
+  const header = Buffer.alloc(20);
+  header.write("RIFF", 0, "ascii");
+  header.writeUInt32LE(12, 4);
+  header.write("WEBP", 8, "ascii");
+  header.write("VP8 ", 12, "ascii");
+  const content = header.toString("base64");
+  const result = buildStudioPostFiles({
+    ...draft,
+    revised: `수정한 승인본\n\n![설명](${url})`,
+    assets: [{ path, content, mimeType: "image/webp" }],
+  });
+
+  assert.deepEqual(result.files.at(-1), {
+    path,
+    content,
+    encoding: "base64",
+    action: "upsert",
+  });
+});
+
 test("only markdown files in Studio content directories are safe", () => {
   assert.equal(isSafeStudioContentPath("content/originals/post.md", "originals"), true);
   assert.equal(isSafeStudioContentPath("content/published/post.md", "published"), true);

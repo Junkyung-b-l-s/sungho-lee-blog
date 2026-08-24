@@ -1,12 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   looksLikeStructuredResponse,
   parseEditorialResponse,
   validatePublishDraft,
 } from "../../lib/studio-draft";
 import { buildEditorialPrompt } from "../../lib/studio-prompt";
+import { renderMarkdown } from "../../lib/markdown";
+import { applyMarkdownFormat, insertMarkdownImage } from "../../lib/studio-markdown";
+import {
+  canAddStudioImages,
+  filterReferencedAssets,
+  optimizeStudioImage,
+} from "../../lib/studio-image";
+import {
+  loadPendingImages,
+  savePendingImages,
+} from "../../lib/studio-image-store";
 
 const STORAGE_KEY = "junkyung-studio-draft-v1";
 
@@ -44,22 +55,78 @@ export default function StudioEditor() {
   const [publishedPosts, setPublishedPosts] = useState([]);
   const [selectedPostPath, setSelectedPostPath] = useState("");
   const [loadingPosts, setLoadingPosts] = useState(false);
+  const [pendingImages, setPendingImages] = useState([]);
+  const [imagePending, setImagePending] = useState(false);
+  const [imageCandidate, setImageCandidate] = useState(null);
+  const [showPasteTarget, setShowPasteTarget] = useState(false);
+  const revisedEditorRef = useRef(null);
+  const imageInputRef = useRef(null);
+  const pasteTargetRef = useRef(null);
+  const editorSelectionRef = useRef({ start: 0, end: 0 });
   const characterCount = useMemo(
     () => draft.original.replace(/\s/g, "").length,
     [draft.original],
   );
+  const referencedImages = useMemo(
+    () => pendingImages.filter((image) => draft.revised.includes(image.url)),
+    [draft.revised, pendingImages],
+  );
+  const previewHtml = useMemo(() => {
+    if (!loaded) return "";
+    let html = renderMarkdown(draft.revised);
+    for (const image of referencedImages) {
+      html = html.replaceAll(
+        `src="${image.url}"`,
+        `src="${image.previewUrl}"`,
+      );
+    }
+    return html;
+  }, [draft.revised, referencedImages, loaded]);
 
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(STORAGE_KEY);
-      if (saved) setDraft({ ...emptyDraft, ...JSON.parse(saved) });
-    } catch {}
-    setLoaded(true);
+    let active = true;
+    async function restoreDraft() {
+      let restoredDraft = emptyDraft;
+      try {
+        const saved = window.localStorage.getItem(STORAGE_KEY);
+        if (saved) restoredDraft = { ...emptyDraft, ...JSON.parse(saved) };
+        if (active) setDraft(restoredDraft);
+      } catch {}
+      try {
+        const images = await loadPendingImages();
+        if (active) {
+          setPendingImages(
+            images.filter((image) => restoredDraft.revised.includes(image.url)),
+          );
+        }
+      } catch (error) {
+        if (active) {
+          setMessage({
+            type: "error",
+            text: `${error.message} 이미지는 새로고침 전에 발행해 주세요.`,
+          });
+        }
+      } finally {
+        if (active) setLoaded(true);
+      }
+    }
+    restoreDraft();
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
     if (loaded) window.localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
   }, [draft, loaded]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    savePendingImages(pendingImages).catch((error) => {
+      setMessage({
+        type: "error",
+        text: `${error.message} 이미지는 새로고침 전에 발행해 주세요.`,
+      });
+    });
+  }, [pendingImages, loaded]);
 
   function update(field, value) {
     setDraft((current) => ({ ...current, [field]: value }));
@@ -77,7 +144,129 @@ export default function StudioEditor() {
       subtitleCandidates: [],
       chatGptResponse: "",
     }));
+    setPendingImages([]);
     setMessage(null);
+  }
+
+  function rememberEditorSelection(element = revisedEditorRef.current) {
+    if (!element) return;
+    editorSelectionRef.current = {
+      start: element.selectionStart ?? draft.revised.length,
+      end: element.selectionEnd ?? draft.revised.length,
+    };
+  }
+
+  function restoreEditorSelection(start, end) {
+    requestAnimationFrame(() => {
+      const editor = revisedEditorRef.current;
+      if (!editor) return;
+      editor.focus();
+      editor.setSelectionRange(start, end);
+      editorSelectionRef.current = { start, end };
+    });
+  }
+
+  function formatMarkdown(format) {
+    const editor = revisedEditorRef.current;
+    const selection = editor
+      ? { start: editor.selectionStart, end: editor.selectionEnd }
+      : editorSelectionRef.current;
+    const result = applyMarkdownFormat({
+      value: draft.revised,
+      ...selection,
+      format,
+    });
+    update("revised", result.value);
+    restoreEditorSelection(result.selectionStart, result.selectionEnd);
+  }
+
+  async function prepareImage(file) {
+    if (!canAddStudioImages(referencedImages.length)) {
+      setMessage({ type: "error", text: "이미지는 글마다 최대 5개까지 넣을 수 있습니다." });
+      return;
+    }
+    setPendingImages(referencedImages);
+    setImagePending(true);
+    setMessage(null);
+    try {
+      const asset = await optimizeStudioImage(file);
+      setImageCandidate({
+        asset,
+        alt: file.name?.replace(/\.[^.]+$/, "") || "",
+        caption: "",
+        selection: { ...editorSelectionRef.current },
+      });
+      setShowPasteTarget(false);
+    } catch (error) {
+      setMessage({ type: "error", text: error.message || "이미지를 처리하지 못했습니다." });
+    } finally {
+      setImagePending(false);
+    }
+  }
+
+  function imageFileFromPaste(event) {
+    return Array.from(event.clipboardData?.items || [])
+      .find((item) => item.kind === "file" && item.type.startsWith("image/"))
+      ?.getAsFile();
+  }
+
+  function handleImagePaste(event) {
+    const file = imageFileFromPaste(event);
+    if (!file) return;
+    event.preventDefault();
+    if (event.currentTarget === revisedEditorRef.current) {
+      rememberEditorSelection(event.currentTarget);
+    }
+    prepareImage(file);
+  }
+
+  async function pasteImageFromClipboard() {
+    rememberEditorSelection();
+    if (navigator.clipboard?.read) {
+      try {
+        const clipboardItems = await navigator.clipboard.read();
+        for (const item of clipboardItems) {
+          const imageType = item.types.find((type) => type.startsWith("image/"));
+          if (imageType) {
+            await prepareImage(await item.getType(imageType));
+            return;
+          }
+        }
+      } catch {
+        // Mobile Safari and some Android browsers require the system paste menu.
+      }
+    }
+    setShowPasteTarget(true);
+    setMessage({
+      type: "success",
+      text: "아래 붙여넣기 영역을 길게 누른 뒤 ‘붙여넣기’를 선택해 주세요.",
+    });
+    requestAnimationFrame(() => pasteTargetRef.current?.focus());
+  }
+
+  function confirmImageInsertion() {
+    const alt = imageCandidate?.alt.trim();
+    if (!alt) {
+      setMessage({ type: "error", text: "이미지를 설명하는 대체 텍스트를 입력해 주세요." });
+      return;
+    }
+    const result = insertMarkdownImage({
+      value: draft.revised,
+      ...imageCandidate.selection,
+      url: imageCandidate.asset.url,
+      alt,
+      caption: imageCandidate.caption.trim(),
+    });
+    setPendingImages((current) => [...current, imageCandidate.asset]);
+    update("revised", result.value);
+    setImageCandidate(null);
+    restoreEditorSelection(result.selectionStart, result.selectionEnd);
+  }
+
+  async function handleSelectedImage(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (file) await prepareImage(file);
   }
 
   async function loadPublishedPosts() {
@@ -114,6 +303,7 @@ export default function StudioEditor() {
       stage: "publish",
       publishedAt: post.publishedAt || todayInSeoul(),
     });
+    setPendingImages([]);
     setMessage({ type: "success", text: "발행된 글을 불러왔습니다. 수정 후 저장해 주세요." });
     setPublishError("");
   }
@@ -162,6 +352,7 @@ export default function StudioEditor() {
         ...result,
         subtitle: result.subtitleCandidates[0] || "",
       }));
+      setPendingImages([]);
       setMessage({ type: "success", text: "윤문 제안을 불러왔습니다. 직접 검토하고 수정해 주세요." });
     } catch {
       setMessage({
@@ -184,6 +375,7 @@ export default function StudioEditor() {
         ...result,
         subtitle: result.subtitleCandidates[0] || "",
       }));
+      setPendingImages([]);
       setMessage({ type: "success", text: "JSON 답변에서 윤문 제안을 불러왔습니다." });
       return;
     } catch {
@@ -202,6 +394,7 @@ export default function StudioEditor() {
       suggestions: [],
       subtitleCandidates: [],
     }));
+    setPendingImages([]);
     setMessage({ type: "success", text: "붙여 넣은 일반 텍스트를 윤문본으로 가져왔습니다." });
   }
 
@@ -228,7 +421,10 @@ export default function StudioEditor() {
       const response = await fetch("/api/studio/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(draft),
+        body: JSON.stringify({
+          ...draft,
+          assets: filterReferencedAssets(draft.revised, referencedImages),
+        }),
       });
       const contentType = response.headers.get("content-type") || "";
       const result = contentType.includes("application/json")
@@ -241,6 +437,7 @@ export default function StudioEditor() {
       }
 
       setDraft({ ...emptyDraft, publishedAt: todayInSeoul() });
+      setPendingImages([]);
       window.localStorage.removeItem(STORAGE_KEY);
       setMessage({
         type: "success",
@@ -260,6 +457,7 @@ export default function StudioEditor() {
   function resetDraft() {
     if (!window.confirm("작성 중인 내용을 모두 비우시겠습니까?")) return;
     setDraft({ ...emptyDraft, publishedAt: todayInSeoul() });
+    setPendingImages([]);
     window.localStorage.removeItem(STORAGE_KEY);
     setMessage(null);
   }
@@ -473,12 +671,95 @@ export default function StudioEditor() {
                 ))}
               </div>
             ) : null}
+            <section className="studio-markdown-editor" aria-labelledby="body-editor-title">
+              <div className="studio-markdown-editor-header">
+                <div>
+                  <strong id="body-editor-title">본문 서식과 이미지</strong>
+                  <span>윤문을 마친 뒤 서식과 이미지를 넣습니다.</span>
+                </div>
+                <span>{referencedImages.length}/5 이미지</span>
+              </div>
+              <div className="studio-format-toolbar" role="toolbar" aria-label="본문 서식">
+                {[
+                  ["bold", "굵게"],
+                  ["quote", "인용"],
+                  ["heading", "소제목"],
+                  ["list", "목록"],
+                  ["link", "링크"],
+                ].map(([format, label]) => (
+                  <button
+                    type="button"
+                    key={format}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => formatMarkdown(format)}
+                  >
+                    {label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  disabled={imagePending}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    rememberEditorSelection();
+                    imageInputRef.current?.click();
+                  }}
+                >
+                  {imagePending ? "이미지 처리 중…" : "사진 선택"}
+                </button>
+                <button
+                  type="button"
+                  disabled={imagePending}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={pasteImageFromClipboard}
+                >
+                  {imagePending ? "이미지 처리 중…" : "클립보드 붙여넣기"}
+                </button>
+                <input
+                  ref={imageInputRef}
+                  className="studio-hidden-file-input"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={handleSelectedImage}
+                />
+              </div>
+              {showPasteTarget ? (
+                <div
+                  ref={pasteTargetRef}
+                  className="studio-mobile-paste-target"
+                  contentEditable
+                  suppressContentEditableWarning
+                  role="textbox"
+                  aria-label="클립보드 이미지 붙여넣기 영역"
+                  tabIndex={0}
+                  onPaste={handleImagePaste}
+                  onInput={(event) => { event.currentTarget.textContent = ""; }}
+                >
+                  여기를 길게 눌러 ‘붙여넣기’를 선택하세요
+                </div>
+              ) : null}
+              <textarea
+                ref={revisedEditorRef}
+                className="studio-markdown-textarea"
+                value={draft.revised}
+                onChange={(event) => update("revised", event.target.value)}
+                onSelect={(event) => rememberEditorSelection(event.currentTarget)}
+                onClick={(event) => rememberEditorSelection(event.currentTarget)}
+                onKeyUp={(event) => rememberEditorSelection(event.currentTarget)}
+                onPaste={handleImagePaste}
+                aria-label="발행 본문"
+              />
+              <small>이미지는 붙여넣거나 사진에서 선택하면 WebP로 자동 최적화됩니다.</small>
+            </section>
           </div>
           <aside className="studio-preview">
             <span>{draft.topic || "주제"} · {draft.publishedAt}</span>
             <h2>{draft.title || "제목"}</h2>
             <p>{draft.subtitle || "핵심 문장"}</p>
-            <div>{draft.revised}</div>
+            <div
+              className="prose studio-preview-prose"
+              dangerouslySetInnerHTML={{ __html: previewHtml }}
+            />
           </aside>
           {publishError ? (
             <div className="studio-notice error" role="alert">
@@ -497,6 +778,41 @@ export default function StudioEditor() {
                   : "승인 및 발행"}
             </button>
           </div>
+        </div>
+      ) : null}
+      {imageCandidate ? (
+        <div className="studio-image-dialog-backdrop" role="presentation">
+          <section className="studio-image-dialog" role="dialog" aria-modal="true" aria-labelledby="image-dialog-title">
+            <header>
+              <div>
+                <p className="eyebrow">IMAGE</p>
+                <h2 id="image-dialog-title">이미지 설명</h2>
+              </div>
+              <button type="button" className="studio-text-button" onClick={() => setImageCandidate(null)}>닫기</button>
+            </header>
+            <img src={imageCandidate.asset.previewUrl} alt="삽입할 이미지 미리보기" />
+            <label className="studio-field">
+              <span>대체 텍스트 · 필수</span>
+              <input
+                autoFocus
+                value={imageCandidate.alt}
+                onChange={(event) => setImageCandidate((current) => ({ ...current, alt: event.target.value }))}
+                placeholder="이미지에 무엇이 보이는지 설명"
+              />
+            </label>
+            <label className="studio-field">
+              <span>캡션 · 선택</span>
+              <input
+                value={imageCandidate.caption}
+                onChange={(event) => setImageCandidate((current) => ({ ...current, caption: event.target.value }))}
+                placeholder="이미지 아래에 표시할 문장"
+              />
+            </label>
+            <div className="studio-actions">
+              <button type="button" className="studio-secondary-button" onClick={() => setImageCandidate(null)}>취소</button>
+              <button type="button" className="studio-primary-button" onClick={confirmImageInsertion}>본문에 넣기</button>
+            </div>
+          </section>
         </div>
       ) : null}
     </section>
