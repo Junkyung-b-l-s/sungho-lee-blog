@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPostsByTopic, getTopics } from "../../../lib/posts";
 import { formatKoreanDate } from "../../../lib/date";
+import { siteConfig } from "../../../site.config";
 
 export function generateStaticParams() {
   return getTopics().map((topic) => ({ topic: topic.name }));
@@ -13,7 +14,7 @@ export async function generateMetadata({ params }) {
 
   return {
     title: decodedTopic,
-    description: `${decodedTopic}에 관한 김준경의 기록.`,
+    description: `${decodedTopic}에 관한 ${siteConfig.koreanName}의 기록.`,
     alternates: { canonical: `/topics/${encodeURIComponent(decodedTopic)}` },
   };
 }

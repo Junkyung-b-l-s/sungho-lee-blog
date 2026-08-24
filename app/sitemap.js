@@ -1,22 +1,18 @@
 import { getAllPosts, getTopics } from "../lib/posts";
-
-const siteUrl = "https://junkyung.kim";
+import { siteConfig } from "../site.config";
 
 export default function sitemap() {
-  const staticPages = ["", "/writing", "/topics", "/about"].map((path) => ({
-    url: `${siteUrl}${path}`,
-    lastModified: new Date("2026-07-20T00:00:00+09:00"),
+  const staticPages = ["", "/writing", "/topics", "/about"].map((pathname) => ({
+    url: `${siteConfig.siteUrl}${pathname}`,
+    lastModified: new Date(),
   }));
-
   const postPages = getAllPosts().map((post) => ({
-    url: `${siteUrl}/writing/${post.slug}`,
+    url: `${siteConfig.siteUrl}/writing/${post.slug}`,
     lastModified: new Date(`${post.updatedAt}T00:00:00+09:00`),
   }));
-
   const topicPages = getTopics().map((topic) => ({
-    url: `${siteUrl}/topics/${encodeURIComponent(topic.name)}`,
-    lastModified: new Date("2026-07-20T00:00:00+09:00"),
+    url: `${siteConfig.siteUrl}/topics/${encodeURIComponent(topic.name)}`,
+    lastModified: new Date(),
   }));
-
   return [...staticPages, ...postPages, ...topicPages];
 }

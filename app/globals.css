@@ -197,6 +197,14 @@ nav a:hover,
   transition: background-color 180ms ease;
 }
 
+.empty-archive {
+  margin: 0;
+  padding-block: 42px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font: 0.95rem/1.8 var(--serif);
+}
+
 .record-row:hover {
   background: color-mix(in srgb, var(--accent) 2.5%, transparent);
 }

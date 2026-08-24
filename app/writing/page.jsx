@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { getAllPosts, getYears } from "../../lib/posts";
 import { formatKoreanMonthDay } from "../../lib/date";
+import { siteConfig } from "../../site.config";
 
 export const metadata = {
   title: "기록",
-  description: "김준경의 생각과 기록을 시간순으로 모은 아카이브.",
+  description: `${siteConfig.koreanName}의 생각과 기록을 시간순으로 모은 아카이브.`,
   alternates: { canonical: "/writing" },
 };
 
@@ -22,6 +23,7 @@ export default function WritingPage() {
       </header>
 
       <div className="year-groups">
+        {!years.length ? <p className="empty-archive">첫 기록을 준비하고 있습니다.</p> : null}
         {years.map((year) => (
           <section className="year-group" key={year} aria-labelledby={`year-${year}`}>
             <h2 id={`year-${year}`}>{year}</h2>

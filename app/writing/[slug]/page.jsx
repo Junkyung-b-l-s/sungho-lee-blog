@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAllPosts, getPost } from "../../../lib/posts";
 import { formatKoreanDate } from "../../../lib/date";
+import { siteConfig } from "../../../site.config";
 
 export function generateStaticParams() {
   return getAllPosts().map((post) => ({ slug: post.slug }));
@@ -24,7 +25,7 @@ export async function generateMetadata({ params }) {
       type: "article",
       publishedTime: post.publishedAt,
       modifiedTime: post.updatedAt,
-      authors: ["Junkyung Kim"],
+      authors: [siteConfig.name],
     },
     twitter: {
       card: "summary_large_image",
@@ -50,10 +51,10 @@ export default async function PostPage({ params }) {
     inLanguage: "ko-KR",
     author: {
       "@type": "Person",
-      name: "Junkyung Kim",
-      url: "https://junkyung.kim/about",
+      name: siteConfig.name,
+      url: `${siteConfig.siteUrl}/about`,
     },
-    mainEntityOfPage: `https://junkyung.kim/writing/${post.slug}`,
+    mainEntityOfPage: `${siteConfig.siteUrl}/writing/${post.slug}`,
   };
 
   return (

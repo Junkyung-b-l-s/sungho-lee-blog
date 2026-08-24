@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { STUDIO_COOKIE, verifyStudioSession } from "../../../../lib/studio-auth";
 import { buildStudioPostFiles } from "../../../../lib/studio-content";
+import { siteConfig } from "../../../../site.config";
 import {
   assertSlugAvailable,
   publishFiles,
@@ -73,7 +74,7 @@ export async function POST(request) {
       ok: true,
       editing: postFiles.editing,
       ...commit,
-      publicUrl: `https://junkyung.kim/writing/${slug}`,
+      publicUrl: `${siteConfig.siteUrl}/writing/${slug}`,
     });
   } catch (error) {
     return NextResponse.json(

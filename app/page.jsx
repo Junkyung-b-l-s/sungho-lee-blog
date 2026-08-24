@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getAllPosts, getTopics, getYears } from "../lib/posts";
 import { formatKoreanDate } from "../lib/date";
+import { siteConfig } from "../site.config";
 
 export const metadata = {
   alternates: { canonical: "/" },
@@ -15,11 +16,9 @@ export default function HomePage() {
   return (
     <>
       <section className="archive-hero shell">
-        <p className="eyebrow">PERSONAL ARCHIVE</p>
-        <h1>생각과 마음</h1>
-        <p className="hero-copy">
-          지금의 생각과 감각을 다시 만날 수 있도록 적어둡니다.
-        </p>
+        <p className="eyebrow">{siteConfig.heroEyebrow}</p>
+        <h1>{siteConfig.heroTitle}</h1>
+        <p className="hero-copy">{siteConfig.heroCopy}</p>
       </section>
 
       <section className="shell recent-section" aria-labelledby="recent-writing">
@@ -29,7 +28,7 @@ export default function HomePage() {
         </div>
 
         <div className="record-list">
-          {recentPosts.map((post) => (
+          {recentPosts.length ? recentPosts.map((post) => (
             <article className="record-row" key={post.slug}>
               <time dateTime={post.publishedAt}>
                 {formatKoreanDate(post.publishedAt)}
@@ -45,7 +44,9 @@ export default function HomePage() {
                 →
               </span>
             </article>
-          ))}
+          )) : (
+            <p className="empty-archive">첫 기록을 준비하고 있습니다.</p>
+          )}
         </div>
       </section>
 
@@ -58,11 +59,11 @@ export default function HomePage() {
         <div className="archive-links">
           <Link href="/writing">
             <span>연도별 기록</span>
-            <strong>{years.join(" · ")}</strong>
+            <strong>{years.length ? years.join(" · ") : "첫 기록을 준비 중입니다"}</strong>
           </Link>
           <Link href="/topics">
             <span>생각의 주제</span>
-            <strong>{topics.map((topic) => topic.name).join(" · ")}</strong>
+            <strong>{topics.length ? topics.map((topic) => topic.name).join(" · ") : "아직 등록된 주제가 없습니다"}</strong>
           </Link>
         </div>
       </section>

@@ -1,14 +1,6 @@
-# junkyung.kim
+# Sungho Lee Blog
 
-김준경의 개인 블로그입니다.
-
-## 기준
-
-- 제품 및 편집 경험의 앵커: Ghost
-- 공개 화면의 앵커: Ghost Source
-- 최초 원문은 `content/originals/`, 발행본은 `content/published/`에 분리 보존
-- 공개 화면은 글을 방해하는 구독·추천·프로모션 요소를 두지 않음
-- SEO 메타데이터, sitemap, RSS, 구조화 데이터는 자동 생성
+이성호 선교사의 글과 기록을 위한 개인 아카이브입니다.
 
 ## 로컬 실행
 
@@ -17,25 +9,18 @@ npm install
 npm run dev
 ```
 
-브라우저에서 <http://localhost:3000>을 엽니다.
+기본 주소는 `http://localhost:3000`입니다. 도메인이 생기면 `NEXT_PUBLIC_SITE_URL`에 전체 URL을 설정합니다.
 
-프로덕션 빌드 검증:
+## 공통 코드 업데이트
+
+JK 블로그를 공통 코드의 upstream으로 둡니다.
 
 ```bash
-npm run build
+git fetch upstream main
 ```
 
-## 현재 범위
+사이트 정체성은 `site.config.js`, 글은 `content/`에 분리되어 있습니다. upstream 변경을 반영할 때 두 경로는 이성호 블로그 값을 유지합니다.
 
-- 홈
-- 연도별 기록 아카이브
-- 주제별 탐색
-- 글 상세
-- 소개
-- RSS
-- sitemap 및 robots
-- Article/Person 구조화 데이터
+## 안전장치
 
-공개 화면은 방문자를 위한 홍보 페이지보다 작성자가 자주 돌아오고 싶은 개인 아카이브를 우선합니다.
-
-다음 단계는 Ghost Admin의 흐름을 참고한 개인용 편집기입니다. 초안 작성, 원문 고정, 수정 제안 검토, 문장별 승인, 미리보기, 발행을 하나의 흐름으로 연결합니다.
+Studio의 GitHub 발행은 `GITHUB_CONTENT_REPOSITORY`와 `GITHUB_CONTENT_TOKEN`을 명시적으로 설정하기 전에는 동작하지 않습니다. JK 블로그 저장소를 기본값으로 사용하지 않습니다.

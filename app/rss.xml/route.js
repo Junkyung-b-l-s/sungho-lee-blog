@@ -1,6 +1,5 @@
 import { getAllPosts } from "../../lib/posts";
-
-const siteUrl = "https://junkyung.kim";
+import { siteConfig } from "../../site.config";
 
 function escapeXml(value) {
   return value
@@ -13,24 +12,22 @@ function escapeXml(value) {
 
 export function GET() {
   const items = getAllPosts()
-    .map(
-      (post) => `
-        <item>
-          <title>${escapeXml(post.title)}</title>
-          <link>${siteUrl}/writing/${post.slug}</link>
-          <guid>${siteUrl}/writing/${post.slug}</guid>
-          ${post.description ? `<description>${escapeXml(post.description)}</description>` : ""}
-          <pubDate>${new Date(`${post.publishedAt}T00:00:00+09:00`).toUTCString()}</pubDate>
-        </item>`,
-    )
+    .map((post) => `
+      <item>
+        <title>${escapeXml(post.title)}</title>
+        <link>${siteConfig.siteUrl}/writing/${post.slug}</link>
+        <guid>${siteConfig.siteUrl}/writing/${post.slug}</guid>
+        ${post.description ? `<description>${escapeXml(post.description)}</description>` : ""}
+        <pubDate>${new Date(`${post.publishedAt}T00:00:00+09:00`).toUTCString()}</pubDate>
+      </item>`)
     .join("");
 
   const xml = `<?xml version="1.0" encoding="UTF-8" ?>
     <rss version="2.0">
       <channel>
-        <title>Junkyung Kim</title>
-        <link>${siteUrl}</link>
-        <description>김준경의 글과 기록.</description>
+        <title>${escapeXml(siteConfig.name)}</title>
+        <link>${siteConfig.siteUrl}</link>
+        <description>${escapeXml(siteConfig.description)}</description>
         <language>ko</language>
         ${items}
       </channel>

@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { getTopics } from "../../lib/posts";
+import { siteConfig } from "../../site.config";
 
 export const metadata = {
   title: "주제",
-  description: "김준경의 기록을 생각의 갈래에 따라 살펴봅니다.",
+  description: `${siteConfig.koreanName}의 기록을 생각의 갈래에 따라 살펴봅니다.`,
   alternates: { canonical: "/topics" },
 };
 
@@ -19,7 +20,7 @@ export default function TopicsPage() {
       </header>
 
       <div className="topic-grid">
-        {topics.map((topic, index) => (
+        {topics.length ? topics.map((topic, index) => (
           <Link
             className="topic-card"
             href={`/topics/${encodeURIComponent(topic.name)}`}
@@ -29,7 +30,7 @@ export default function TopicsPage() {
             <h2>{topic.name}</h2>
             <span className="topic-count">글 {topic.count}개</span>
           </Link>
-        ))}
+        )) : <p className="empty-archive">아직 등록된 주제가 없습니다.</p>}
       </div>
     </section>
   );

@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { ImageResponse } from "next/og";
 import { getPost } from "../../../lib/posts";
+import { siteConfig, siteHost } from "../../../site.config";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -38,7 +39,7 @@ export default async function OpenGraphImage({ params }) {
           color: "#163f63",
         }}
       >
-        <span style={{ fontSize: 31, fontWeight: 800 }}>JK Kim</span>
+        <span style={{ fontSize: 31, fontWeight: 800 }}>{siteConfig.name}</span>
         <span>{post?.topic ?? "기록"}</span>
       </div>
       <div
@@ -61,7 +62,7 @@ export default async function OpenGraphImage({ params }) {
             letterSpacing: "-0.05em",
           }}
         >
-          {post?.title ?? "Junkyung Kim"}
+          {post?.title ?? siteConfig.name}
         </div>
         {post?.description ? (
           <div
@@ -90,8 +91,8 @@ export default async function OpenGraphImage({ params }) {
           color: "#68717a",
         }}
       >
-        <span>PERSONAL ARCHIVE</span>
-        <span>junkyung.kim</span>
+        <span>{siteConfig.heroEyebrow}</span>
+        <span>{siteHost()}</span>
       </div>
     </div>,
     {

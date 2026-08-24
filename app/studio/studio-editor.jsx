@@ -8,6 +8,7 @@ import {
 } from "../../lib/studio-draft";
 import { buildEditorialPrompt } from "../../lib/studio-prompt";
 import { renderMarkdown } from "../../lib/markdown";
+import { siteHost } from "../../site.config";
 import { applyMarkdownFormat, insertMarkdownImage } from "../../lib/studio-markdown";
 import {
   canAddStudioImages,
@@ -826,7 +827,7 @@ export default function StudioEditor() {
               <label className="studio-field"><span>주제</span><input value={draft.topic} onChange={(event) => update("topic", event.target.value)} /></label>
               <label className="studio-field"><span>발행일</span><input type="date" value={draft.publishedAt} onChange={(event) => update("publishedAt", event.target.value)} /></label>
             </div>
-            <label className="studio-field"><span>슬러그</span><div className="studio-slug"><span>junkyung.kim/writing/</span><input value={draft.slug} onChange={(event) => update("slug", event.target.value.toLowerCase())} /></div></label>
+            <label className="studio-field"><span>슬러그</span><div className="studio-slug"><span>{siteHost()}/writing/</span><input value={draft.slug} onChange={(event) => update("slug", event.target.value.toLowerCase())} /></div></label>
             <label className="studio-field"><span>핵심 문장</span><textarea className="studio-subtitle-input" value={draft.subtitle} onChange={(event) => update("subtitle", event.target.value)} /></label>
             {draft.subtitleCandidates.length ? (
               <div className="studio-candidates">
