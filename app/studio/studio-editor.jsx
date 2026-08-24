@@ -841,6 +841,18 @@ export default function StudioEditor() {
               "revised",
               "발행 전 최종 서식과 이미지 위치를 확인합니다.",
             )}
+            <div className="studio-actions studio-publish-actions">
+              <button className="studio-secondary-button" type="button" onClick={() => update("stage", "review")}>윤문본 다시 보기</button>
+              <button className="studio-primary-button" type="button" onClick={publish} disabled={pending === "publish"}>
+                {pending === "publish"
+                  ? draft.sourcePublishedPath
+                    ? "저장하는 중…"
+                    : "발행하는 중…"
+                  : draft.sourcePublishedPath
+                    ? "수정 저장"
+                    : "승인 및 발행"}
+              </button>
+            </div>
           </div>
           {renderArticlePreview()}
           {publishError ? (
@@ -848,18 +860,6 @@ export default function StudioEditor() {
               <p>{publishError}</p>
             </div>
           ) : null}
-          <div className="studio-actions studio-publish-actions">
-            <button className="studio-secondary-button" type="button" onClick={() => update("stage", "review")}>윤문본 다시 보기</button>
-            <button className="studio-primary-button" type="button" onClick={publish} disabled={pending === "publish"}>
-              {pending === "publish"
-                ? draft.sourcePublishedPath
-                  ? "저장하는 중…"
-                  : "발행하는 중…"
-                : draft.sourcePublishedPath
-                  ? "수정 저장"
-                  : "승인 및 발행"}
-            </button>
-          </div>
         </div>
       ) : null}
       {imageCandidate ? (
