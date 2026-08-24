@@ -69,6 +69,43 @@ test("publication includes referenced WebP assets in the same commit", () => {
   });
 });
 
+test("publication preserves an image referenced only by the original source", () => {
+  const path = "public/media/posts/123e4567-e89b-42d3-a456-426614174000.webp";
+  const url = "/media/posts/123e4567-e89b-42d3-a456-426614174000.webp";
+  const header = Buffer.alloc(20);
+  header.write("RIFF", 0, "ascii");
+  header.writeUInt32LE(12, 4);
+  header.write("WEBP", 8, "ascii");
+  header.write("VP8 ", 12, "ascii");
+  const content = header.toString("base64");
+  const result = buildStudioPostFiles({
+    ...draft,
+    original: `처음 쓴 원문\n\n![원문 이미지](${url})`,
+    revised: "이미지가 빠진 윤문본",
+    assets: [{ path, content, mimeType: "image/webp" }],
+  });
+
+  assert.equal(result.files.at(-1).path, path);
+});
+
+test("original Markdown cannot hide a revised image reference", () => {
+  const path = "public/media/posts/123e4567-e89b-42d3-a456-426614174000.webp";
+  const url = "/media/posts/123e4567-e89b-42d3-a456-426614174000.webp";
+  const header = Buffer.alloc(20);
+  header.write("RIFF", 0, "ascii");
+  header.writeUInt32LE(12, 4);
+  header.write("WEBP", 8, "ascii");
+  header.write("VP8 ", 12, "ascii");
+  const result = buildStudioPostFiles({
+    ...draft,
+    original: "원문 끝의 열린 코드 블록\n```",
+    revised: `수정한 승인본\n\n![윤문 이미지](${url})`,
+    assets: [{ path, content: header.toString("base64"), mimeType: "image/webp" }],
+  });
+
+  assert.equal(result.files.at(-1).path, path);
+});
+
 test("only markdown files in Studio content directories are safe", () => {
   assert.equal(isSafeStudioContentPath("content/originals/post.md", "originals"), true);
   assert.equal(isSafeStudioContentPath("content/published/post.md", "published"), true);

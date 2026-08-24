@@ -59,29 +59,37 @@ export default function StudioEditor() {
   const [imagePending, setImagePending] = useState(false);
   const [imageCandidate, setImageCandidate] = useState(null);
   const [showPasteTarget, setShowPasteTarget] = useState(false);
-  const revisedEditorRef = useRef(null);
+  const bodyEditorRef = useRef(null);
   const imageInputRef = useRef(null);
   const pasteTargetRef = useRef(null);
   const editorSelectionRef = useRef({ start: 0, end: 0 });
+  const imageTargetFieldRef = useRef("revised");
   const characterCount = useMemo(
     () => draft.original.replace(/\s/g, "").length,
     [draft.original],
   );
   const referencedImages = useMemo(
-    () => pendingImages.filter((image) => draft.revised.includes(image.url)),
-    [draft.revised, pendingImages],
+    () => pendingImages.filter(
+      (image) => draft.original.includes(image.url) || draft.revised.includes(image.url),
+    ),
+    [draft.original, draft.revised, pendingImages],
   );
   const previewHtml = useMemo(() => {
-    if (!loaded) return "";
-    let html = renderMarkdown(draft.revised);
-    for (const image of referencedImages) {
-      html = html.replaceAll(
-        `src="${image.url}"`,
-        `src="${image.previewUrl}"`,
-      );
+    const previews = { original: "", revised: "" };
+    if (!loaded) return previews;
+    for (const field of ["original", "revised"]) {
+      let html = renderMarkdown(draft[field]);
+      for (const image of pendingImages) {
+        if (!draft[field].includes(image.url)) continue;
+        html = html.replaceAll(
+          `src="${image.url}"`,
+          `src="${image.previewUrl}"`,
+        );
+      }
+      previews[field] = html;
     }
-    return html;
-  }, [draft.revised, referencedImages, loaded]);
+    return previews;
+  }, [draft.original, draft.revised, pendingImages, loaded]);
 
   useEffect(() => {
     let active = true;
@@ -96,7 +104,11 @@ export default function StudioEditor() {
         const images = await loadPendingImages();
         if (active) {
           setPendingImages(
-            images.filter((image) => restoredDraft.revised.includes(image.url)),
+            images.filter(
+              (image) =>
+                restoredDraft.original.includes(image.url) ||
+                restoredDraft.revised.includes(image.url),
+            ),
           );
         }
       } catch (error) {
@@ -135,6 +147,12 @@ export default function StudioEditor() {
   }
 
   function updateOriginal(value) {
+    if (draft.revised && !window.confirm(
+      "원문을 수정하면 현재 윤문본과 윤문 제안이 초기화됩니다. 계속하시겠습니까?",
+    )) {
+      setDraft((current) => ({ ...current }));
+      return;
+    }
     setDraft((current) => ({
       ...current,
       original: value,
@@ -144,43 +162,56 @@ export default function StudioEditor() {
       subtitleCandidates: [],
       chatGptResponse: "",
     }));
-    setPendingImages([]);
+    setPendingImages((current) =>
+      current.filter((image) => value.includes(image.url)),
+    );
     setMessage(null);
   }
 
-  function rememberEditorSelection(element = revisedEditorRef.current) {
+  function updateBody(field, value) {
+    if (field === "original") updateOriginal(value);
+    else update("revised", value);
+  }
+
+  function rememberEditorSelection(
+    element = bodyEditorRef.current,
+    field = imageTargetFieldRef.current,
+  ) {
     if (!element) return;
+    imageTargetFieldRef.current = field;
     editorSelectionRef.current = {
-      start: element.selectionStart ?? draft.revised.length,
-      end: element.selectionEnd ?? draft.revised.length,
+      start: element.selectionStart ?? draft[field].length,
+      end: element.selectionEnd ?? draft[field].length,
     };
   }
 
   function restoreEditorSelection(start, end) {
     requestAnimationFrame(() => {
-      const editor = revisedEditorRef.current;
-      if (!editor) return;
+      const editor = bodyEditorRef.current;
+      if (!editor || !document.contains(editor)) return;
       editor.focus();
       editor.setSelectionRange(start, end);
       editorSelectionRef.current = { start, end };
     });
   }
 
-  function formatMarkdown(format) {
-    const editor = revisedEditorRef.current;
+  function formatMarkdown(format, field) {
+    const editor = bodyEditorRef.current;
+    imageTargetFieldRef.current = field;
     const selection = editor
       ? { start: editor.selectionStart, end: editor.selectionEnd }
       : editorSelectionRef.current;
     const result = applyMarkdownFormat({
-      value: draft.revised,
+      value: draft[field],
       ...selection,
       format,
     });
-    update("revised", result.value);
+    updateBody(field, result.value);
     restoreEditorSelection(result.selectionStart, result.selectionEnd);
   }
 
-  async function prepareImage(file) {
+  async function prepareImage(file, field = imageTargetFieldRef.current) {
+    imageTargetFieldRef.current = field;
     if (!canAddStudioImages(referencedImages.length)) {
       setMessage({ type: "error", text: "이미지는 글마다 최대 5개까지 넣을 수 있습니다." });
       return;
@@ -194,6 +225,7 @@ export default function StudioEditor() {
         asset,
         alt: file.name?.replace(/\.[^.]+$/, "") || "",
         caption: "",
+        field,
         selection: { ...editorSelectionRef.current },
       });
       setShowPasteTarget(false);
@@ -210,25 +242,27 @@ export default function StudioEditor() {
       ?.getAsFile();
   }
 
-  function handleImagePaste(event) {
+  function handleImagePaste(event, field) {
     const file = imageFileFromPaste(event);
     if (!file) return;
     event.preventDefault();
-    if (event.currentTarget === revisedEditorRef.current) {
-      rememberEditorSelection(event.currentTarget);
+    imageTargetFieldRef.current = field;
+    if (event.currentTarget === bodyEditorRef.current) {
+      rememberEditorSelection(event.currentTarget, field);
     }
-    prepareImage(file);
+    prepareImage(file, field);
   }
 
-  async function pasteImageFromClipboard() {
-    rememberEditorSelection();
+  async function pasteImageFromClipboard(field) {
+    imageTargetFieldRef.current = field;
+    rememberEditorSelection(bodyEditorRef.current, field);
     if (navigator.clipboard?.read) {
       try {
         const clipboardItems = await navigator.clipboard.read();
         for (const item of clipboardItems) {
           const imageType = item.types.find((type) => type.startsWith("image/"));
           if (imageType) {
-            await prepareImage(await item.getType(imageType));
+            await prepareImage(await item.getType(imageType), field);
             return;
           }
         }
@@ -250,15 +284,16 @@ export default function StudioEditor() {
       setMessage({ type: "error", text: "이미지를 설명하는 대체 텍스트를 입력해 주세요." });
       return;
     }
+    const field = imageCandidate.field || "revised";
     const result = insertMarkdownImage({
-      value: draft.revised,
+      value: draft[field],
       ...imageCandidate.selection,
       url: imageCandidate.asset.url,
       alt,
       caption: imageCandidate.caption.trim(),
     });
     setPendingImages((current) => [...current, imageCandidate.asset]);
-    update("revised", result.value);
+    updateBody(field, result.value);
     setImageCandidate(null);
     restoreEditorSelection(result.selectionStart, result.selectionEnd);
   }
@@ -339,6 +374,23 @@ export default function StudioEditor() {
     }
   }
 
+  function preserveImagesForRevision(revision, successText) {
+    const droppedCount = pendingImages.filter(
+      (image) => draft.original.includes(image.url) && !revision.includes(image.url),
+    ).length;
+    setPendingImages((current) =>
+      current.filter(
+        (image) => draft.original.includes(image.url) || revision.includes(image.url),
+      ),
+    );
+    setMessage({
+      type: droppedCount ? "warning" : "success",
+      text: droppedCount
+        ? `윤문본에서 이미지 ${droppedCount}개가 빠졌습니다. 원본 이미지는 안전하게 보관하고 함께 저장합니다.`
+        : successText,
+    });
+  }
+
   function importChatGptResponse() {
     if (!draft.chatGptResponse.trim()) {
       setMessage({ type: "error", text: "ChatGPT의 답변을 붙여 넣어 주세요." });
@@ -352,8 +404,10 @@ export default function StudioEditor() {
         ...result,
         subtitle: result.subtitleCandidates[0] || "",
       }));
-      setPendingImages([]);
-      setMessage({ type: "success", text: "윤문 제안을 불러왔습니다. 직접 검토하고 수정해 주세요." });
+      preserveImagesForRevision(
+        result.revised,
+        "윤문 제안을 불러왔습니다. 직접 검토하고 수정해 주세요.",
+      );
     } catch {
       setMessage({
         type: "error",
@@ -375,8 +429,10 @@ export default function StudioEditor() {
         ...result,
         subtitle: result.subtitleCandidates[0] || "",
       }));
-      setPendingImages([]);
-      setMessage({ type: "success", text: "JSON 답변에서 윤문 제안을 불러왔습니다." });
+      preserveImagesForRevision(
+        result.revised,
+        "JSON 답변에서 윤문 제안을 불러왔습니다.",
+      );
       return;
     } catch {
       if (looksLikeStructuredResponse(draft.chatGptResponse)) {
@@ -388,14 +444,17 @@ export default function StudioEditor() {
       }
     }
 
+    const plainRevision = draft.chatGptResponse.trim();
     setDraft((current) => ({
       ...current,
-      revised: current.chatGptResponse.trim(),
+      revised: plainRevision,
       suggestions: [],
       subtitleCandidates: [],
     }));
-    setPendingImages([]);
-    setMessage({ type: "success", text: "붙여 넣은 일반 텍스트를 윤문본으로 가져왔습니다." });
+    preserveImagesForRevision(
+      plainRevision,
+      "붙여 넣은 일반 텍스트를 윤문본으로 가져왔습니다.",
+    );
   }
 
   async function publish() {
@@ -423,7 +482,10 @@ export default function StudioEditor() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...draft,
-          assets: filterReferencedAssets(draft.revised, referencedImages),
+          assets: filterReferencedAssets(
+            `${draft.original}\n${draft.revised}`,
+            referencedImages,
+          ),
         }),
       });
       const contentType = response.headers.get("content-type") || "";
@@ -467,15 +529,15 @@ export default function StudioEditor() {
     window.location.reload();
   }
 
-  function renderMarkdownEditor(titleId) {
+  function renderMarkdownEditor(titleId, field, description) {
     return (
       <section className="studio-markdown-editor" aria-labelledby={titleId}>
         <div className="studio-markdown-editor-header">
           <div>
             <strong id={titleId}>본문 서식과 이미지</strong>
-            <span>윤문본을 다듬으면서 서식과 이미지를 넣습니다.</span>
+            <span>{description}</span>
           </div>
-          <span>{referencedImages.length}/5 이미지</span>
+          <span>총 {referencedImages.length}/5 이미지</span>
         </div>
         <div className="studio-format-toolbar" role="toolbar" aria-label="본문 서식">
           {[
@@ -489,7 +551,7 @@ export default function StudioEditor() {
               type="button"
               key={format}
               onMouseDown={(event) => event.preventDefault()}
-              onClick={() => formatMarkdown(format)}
+              onClick={() => formatMarkdown(format, field)}
             >
               {label}
             </button>
@@ -499,7 +561,8 @@ export default function StudioEditor() {
             disabled={imagePending}
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => {
-              rememberEditorSelection();
+              rememberEditorSelection(bodyEditorRef.current, field);
+              imageTargetFieldRef.current = field;
               imageInputRef.current?.click();
             }}
           >
@@ -509,7 +572,7 @@ export default function StudioEditor() {
             type="button"
             disabled={imagePending}
             onMouseDown={(event) => event.preventDefault()}
-            onClick={pasteImageFromClipboard}
+            onClick={() => pasteImageFromClipboard(field)}
           >
             {imagePending ? "이미지 처리 중…" : "클립보드 붙여넣기"}
           </button>
@@ -530,29 +593,30 @@ export default function StudioEditor() {
             role="textbox"
             aria-label="클립보드 이미지 붙여넣기 영역"
             tabIndex={0}
-            onPaste={handleImagePaste}
+            onPaste={(event) => handleImagePaste(event, field)}
             onInput={(event) => { event.currentTarget.textContent = ""; }}
           >
             여기를 길게 눌러 ‘붙여넣기’를 선택하세요
           </div>
         ) : null}
         <textarea
-          ref={revisedEditorRef}
+          ref={bodyEditorRef}
           className="studio-markdown-textarea"
-          value={draft.revised}
-          onChange={(event) => update("revised", event.target.value)}
-          onSelect={(event) => rememberEditorSelection(event.currentTarget)}
-          onClick={(event) => rememberEditorSelection(event.currentTarget)}
-          onKeyUp={(event) => rememberEditorSelection(event.currentTarget)}
-          onPaste={handleImagePaste}
-          aria-label="발행 본문"
+          value={draft[field]}
+          onChange={(event) => updateBody(field, event.target.value)}
+          onSelect={(event) => rememberEditorSelection(event.currentTarget, field)}
+          onClick={(event) => rememberEditorSelection(event.currentTarget, field)}
+          onKeyUp={(event) => rememberEditorSelection(event.currentTarget, field)}
+          onPaste={(event) => handleImagePaste(event, field)}
+          aria-label={field === "original" ? "원문 본문" : "발행 본문"}
+          placeholder={field === "original" ? "지금의 생각과 감각을 그대로 적어보세요." : "윤문본을 직접 다듬어보세요."}
         />
         <small>이미지는 붙여넣거나 사진에서 선택하면 WebP로 자동 최적화됩니다.</small>
       </section>
     );
   }
 
-  function renderArticlePreview(extraClass = "") {
+  function renderArticlePreview(extraClass = "", field = "revised") {
     return (
       <aside className={`studio-preview ${extraClass}`.trim()}>
         <span>{draft.topic || "주제"} · {draft.publishedAt}</span>
@@ -560,7 +624,7 @@ export default function StudioEditor() {
         <p>{draft.subtitle || "핵심 문장"}</p>
         <div
           className="prose studio-preview-prose"
-          dangerouslySetInnerHTML={{ __html: previewHtml }}
+          dangerouslySetInnerHTML={{ __html: previewHtml[field] }}
         />
       </aside>
     );
@@ -655,14 +719,12 @@ export default function StudioEditor() {
               placeholder="글의 제목"
             />
           </label>
-          <label className="studio-field studio-writing-field">
-            <span>원문</span>
-            <textarea
-              value={draft.original}
-              onChange={(event) => updateOriginal(event.target.value)}
-              placeholder="지금의 생각과 감각을 그대로 적어보세요."
-            />
-          </label>
+          {renderMarkdownEditor(
+            "write-body-editor-title",
+            "original",
+            "처음 쓰는 순간부터 서식과 이미지를 넣을 수 있습니다.",
+          )}
+          {renderArticlePreview("studio-write-preview", "original")}
           <div className="studio-panel-footer">
             <span>{characterCount.toLocaleString("ko-KR")}자 · 이 브라우저에 자동 저장됨</span>
             <div>
@@ -721,10 +783,14 @@ export default function StudioEditor() {
               <textarea value={draft.original} readOnly />
             </label>
             <div>
-              {renderMarkdownEditor("review-body-editor-title")}
+              {renderMarkdownEditor(
+                "review-body-editor-title",
+                "revised",
+                "윤문본을 다듬으면서 서식과 이미지를 넣습니다.",
+              )}
             </div>
           </div>
-          {renderArticlePreview("studio-review-preview")}
+          {renderArticlePreview("studio-review-preview", "revised")}
           <section className="studio-suggestions">
             <header>
               <h2>수정 제안</h2>
@@ -770,7 +836,11 @@ export default function StudioEditor() {
                 ))}
               </div>
             ) : null}
-            {renderMarkdownEditor("publish-body-editor-title")}
+            {renderMarkdownEditor(
+              "publish-body-editor-title",
+              "revised",
+              "발행 전 최종 서식과 이미지 위치를 확인합니다.",
+            )}
           </div>
           {renderArticlePreview()}
           {publishError ? (

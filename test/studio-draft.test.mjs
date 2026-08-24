@@ -32,6 +32,18 @@ test("parses a valid editorial JSON response", () => {
   assert.equal(result.slug, "waiting-for-fruit");
 });
 
+test("removes Markdown decoration from subtitle candidates", () => {
+  const result = parseEditorialResponse(JSON.stringify({
+    ...validResponse,
+    revisedText: "## 기다림의 시간\n\n**기다림 끝에 열매가 맺혔다.**",
+    subtitleCandidates: ["## 기다림의 시간", "**기다림 끝에 열매가 맺혔다.**"],
+  }));
+  assert.deepEqual(result.subtitleCandidates, [
+    "기다림의 시간",
+    "기다림 끝에 열매가 맺혔다.",
+  ]);
+});
+
 test("parses JSON inside a markdown code fence", () => {
   const result = parseEditorialResponse(`\`\`\`json\n${JSON.stringify(validResponse)}\n\`\`\``);
   assert.equal(result.topic, "기다림");

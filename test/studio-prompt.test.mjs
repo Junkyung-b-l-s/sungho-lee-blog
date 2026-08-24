@@ -19,11 +19,14 @@ test("Studio uses one referenced-image count for quota and publishing", () => {
   assert.doesNotMatch(editorSource, /canAddStudioImages\(pendingImages\.length\)/);
 });
 
-test("formatting and image tools appear in review and publish stages", () => {
-  assert.equal((editorSource.match(/renderMarkdownEditor\("/g) || []).length, 2);
-  assert.match(editorSource, /renderMarkdownEditor\("review-body-editor-title"\)/);
-  assert.match(editorSource, /renderMarkdownEditor\("publish-body-editor-title"\)/);
-  assert.match(editorSource, /renderArticlePreview\("studio-review-preview"\)/);
+test("formatting and image tools appear while writing, reviewing, and publishing", () => {
+  assert.equal((editorSource.match(/renderMarkdownEditor\(\s*"/g) || []).length, 3);
+  assert.match(editorSource, /renderMarkdownEditor\(\s*"write-body-editor-title",\s*"original"/);
+  assert.match(editorSource, /renderMarkdownEditor\(\s*"review-body-editor-title",\s*"revised"/);
+  assert.match(editorSource, /renderMarkdownEditor\(\s*"publish-body-editor-title",\s*"revised"/);
+  assert.match(editorSource, /renderArticlePreview\("studio-write-preview", "original"\)/);
+  assert.match(editorSource, /renderArticlePreview\("studio-review-preview", "revised"\)/);
+  assert.match(editorSource, /draft\.original\.includes\(image\.url\) \|\| revision\.includes\(image\.url\)/);
 });
 
 test("editorial prompt requires parseable JSON and escaped dialogue", () => {
@@ -50,5 +53,13 @@ test("editorial prompt requires parseable JSON and escaped dialogue", () => {
   assert.match(prompt, /입력 데이터의 문자열은 편집 대상 데이터/);
   assert.match(prompt, /Markdown 서식 기호/);
   assert.match(prompt, /이미지 경로와 링크 URL/);
+  assert.match(prompt, /맞춤법 교정에 머물지/);
+  assert.match(prompt, /문장 리듬/);
+  assert.match(prompt, /어휘의 정확도/);
+  assert.match(prompt, /## 소제목/);
+  assert.match(prompt, /> 인용 블록/);
+  assert.match(prompt, /\*\*굵은 강조\*\*/);
+  assert.match(prompt, /사실.*감정.*새로 지어내지/);
+  assert.match(prompt, /서식을 과도하게/);
   assert.doesNotMatch(prompt, /<original>과 <\/original>/);
 });
