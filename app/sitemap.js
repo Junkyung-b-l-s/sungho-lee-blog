@@ -1,7 +1,8 @@
 import { getAllPosts, getTopics } from "../lib/posts";
-import { siteConfig } from "../site.config";
+import { isLocalSite, siteConfig } from "../site.config";
 
 export default function sitemap() {
+  if (isLocalSite()) return [];
   const staticPages = ["", "/writing", "/topics", "/about"].map((pathname) => ({
     url: `${siteConfig.siteUrl}${pathname}`,
     lastModified: new Date(),

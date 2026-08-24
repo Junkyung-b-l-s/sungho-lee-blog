@@ -9,17 +9,18 @@ npm install
 npm run dev
 ```
 
-기본 주소는 `http://localhost:3000`입니다. 도메인이 생기면 `NEXT_PUBLIC_SITE_URL`에 전체 URL을 설정합니다.
+기본 주소는 `http://localhost:3100`입니다. JK 블로그와 브라우저 저장소를 분리하기 위해 전용 포트를 쓰며, 외부 LAN에서는 접근할 수 없도록 `127.0.0.1`에만 바인딩합니다. 도메인이 생기면 `NEXT_PUBLIC_SITE_URL`에 전체 URL을 설정합니다.
 
 ## 공통 코드 업데이트
 
-JK 블로그를 공통 코드의 upstream으로 둡니다.
+JK 블로그를 공통 코드의 upstream으로 두되, 자동 merge는 하지 않습니다. JK의 글과 정체성 파일이 다시 들어올 수 있기 때문입니다.
 
 ```bash
 git fetch upstream main
+git diff HEAD...upstream/main -- app components lib test package.json package-lock.json next.config.mjs
 ```
 
-사이트 정체성은 `site.config.js`, 글은 `content/`에 분리되어 있습니다. upstream 변경을 반영할 때 두 경로는 이성호 블로그 값을 유지합니다.
+위 diff에서 공통 코드 변경만 검토해 반영합니다. `content/`, `site.config.js`, `.env.example`은 항상 이성호 블로그 값을 유지합니다. `upstream`의 push URL은 `DISABLED`로 설정되어 JK 저장소에 실수로 push할 수 없습니다.
 
 ## 안전장치
 

@@ -19,7 +19,7 @@ test("Sungho Lee identity is centralized and JK identity is absent from producti
   assert.equal(siteConfig.name, "Sungho Lee");
   assert.equal(siteConfig.koreanName, "이성호");
   assert.equal(siteConfig.role, "선교사");
-  assert.equal(siteConfig.siteUrl, "http://localhost:3000");
+  assert.equal(siteConfig.siteUrl, "http://localhost:3100");
 
   const files = [
     ...productionSources("app"),
@@ -29,5 +29,24 @@ test("Sungho Lee identity is centralized and JK identity is absent from producti
     "README.md",
   ];
   const source = files.map((file) => fs.readFileSync(path.join(root, file), "utf8")).join("\n");
-  assert.doesNotMatch(source, /Junkyung|JK Kim|김준경|junkyung\.kim|Junkyung-b-l-s\/junkyung-kim-blog/);
+  assert.doesNotMatch(source, /Junkyung|JK Kim|김준경|junkyung|jk_studio|Junkyung-b-l-s\/junkyung-kim-blog/i);
+});
+
+test("local and private-network hosts remain private", async () => {
+  const { isPrivateHostname, normalizeSiteUrl } = await import("../site.config.js");
+  assert.equal(normalizeSiteUrl("https://example.com/"), "https://example.com");
+  assert.equal(normalizeSiteUrl("https://example.com/archive/"), "https://example.com/archive");
+  assert.throws(() => normalizeSiteUrl("not a url"), /NEXT_PUBLIC_SITE_URL/);
+  for (const hostname of ["localhost", "127.0.0.1", "127.4.3.2", "::1", "10.0.0.8", "172.20.1.2", "192.168.1.5", "preview.local"]) {
+    assert.equal(isPrivateHostname(hostname), true, hostname);
+  }
+  assert.equal(isPrivateHostname("example.com"), false);
+  assert.equal(isPrivateHostname("fcorp.com"), false);
+  assert.equal(isPrivateHostname("127.999.999.999"), false);
+});
+
+test("local scripts bind only to the loopback interface", () => {
+  const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+  assert.match(packageJson.scripts.dev, /-H 127\.0\.0\.1/);
+  assert.match(packageJson.scripts.start, /-H 127\.0\.0\.1/);
 });

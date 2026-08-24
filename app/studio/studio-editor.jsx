@@ -20,7 +20,7 @@ import {
   savePendingImages,
 } from "../../lib/studio-image-store";
 
-const STORAGE_KEY = "junkyung-studio-draft-v1";
+const STORAGE_KEY = "sungho-lee-studio-draft-v1";
 
 function todayInSeoul() {
   return new Intl.DateTimeFormat("en-CA", {
