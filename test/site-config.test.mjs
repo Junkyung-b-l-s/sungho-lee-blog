@@ -47,6 +47,9 @@ test("local and private-network hosts remain private", async () => {
 
 test("local scripts bind only to the loopback interface", () => {
   const packageJson = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
+  const nextConfig = fs.readFileSync(path.join(root, "next.config.mjs"), "utf8");
   assert.match(packageJson.scripts.dev, /-H 127\.0\.0\.1/);
   assert.match(packageJson.scripts.start, /-H 127\.0\.0\.1/);
+  assert.match(nextConfig, /www\.musalee\.blog/);
+  assert.match(nextConfig, /https:\/\/musalee\.blog\/\:path\*/);
 });
