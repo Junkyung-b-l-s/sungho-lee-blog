@@ -1134,6 +1134,15 @@ nav a:hover,
   font: 0.88rem/1.9 var(--serif);
 }
 
+.studio-review-preview {
+  position: static;
+  margin-top: 24px;
+}
+
+.studio-review-formatting > div {
+  min-width: 0;
+}
+
 .studio-markdown-editor {
   margin-top: 28px;
   padding-top: 25px;

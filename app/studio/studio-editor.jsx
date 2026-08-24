@@ -467,6 +467,105 @@ export default function StudioEditor() {
     window.location.reload();
   }
 
+  function renderMarkdownEditor(titleId) {
+    return (
+      <section className="studio-markdown-editor" aria-labelledby={titleId}>
+        <div className="studio-markdown-editor-header">
+          <div>
+            <strong id={titleId}>본문 서식과 이미지</strong>
+            <span>윤문본을 다듬으면서 서식과 이미지를 넣습니다.</span>
+          </div>
+          <span>{referencedImages.length}/5 이미지</span>
+        </div>
+        <div className="studio-format-toolbar" role="toolbar" aria-label="본문 서식">
+          {[
+            ["bold", "굵게"],
+            ["quote", "인용"],
+            ["heading", "소제목"],
+            ["list", "목록"],
+            ["link", "링크"],
+          ].map(([format, label]) => (
+            <button
+              type="button"
+              key={format}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => formatMarkdown(format)}
+            >
+              {label}
+            </button>
+          ))}
+          <button
+            type="button"
+            disabled={imagePending}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => {
+              rememberEditorSelection();
+              imageInputRef.current?.click();
+            }}
+          >
+            {imagePending ? "이미지 처리 중…" : "사진 선택"}
+          </button>
+          <button
+            type="button"
+            disabled={imagePending}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={pasteImageFromClipboard}
+          >
+            {imagePending ? "이미지 처리 중…" : "클립보드 붙여넣기"}
+          </button>
+          <input
+            ref={imageInputRef}
+            className="studio-hidden-file-input"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handleSelectedImage}
+          />
+        </div>
+        {showPasteTarget ? (
+          <div
+            ref={pasteTargetRef}
+            className="studio-mobile-paste-target"
+            contentEditable
+            suppressContentEditableWarning
+            role="textbox"
+            aria-label="클립보드 이미지 붙여넣기 영역"
+            tabIndex={0}
+            onPaste={handleImagePaste}
+            onInput={(event) => { event.currentTarget.textContent = ""; }}
+          >
+            여기를 길게 눌러 ‘붙여넣기’를 선택하세요
+          </div>
+        ) : null}
+        <textarea
+          ref={revisedEditorRef}
+          className="studio-markdown-textarea"
+          value={draft.revised}
+          onChange={(event) => update("revised", event.target.value)}
+          onSelect={(event) => rememberEditorSelection(event.currentTarget)}
+          onClick={(event) => rememberEditorSelection(event.currentTarget)}
+          onKeyUp={(event) => rememberEditorSelection(event.currentTarget)}
+          onPaste={handleImagePaste}
+          aria-label="발행 본문"
+        />
+        <small>이미지는 붙여넣거나 사진에서 선택하면 WebP로 자동 최적화됩니다.</small>
+      </section>
+    );
+  }
+
+  function renderArticlePreview(extraClass = "") {
+    return (
+      <aside className={`studio-preview ${extraClass}`.trim()}>
+        <span>{draft.topic || "주제"} · {draft.publishedAt}</span>
+        <h2>{draft.title || "제목"}</h2>
+        <p>{draft.subtitle || "핵심 문장"}</p>
+        <div
+          className="prose studio-preview-prose"
+          dangerouslySetInnerHTML={{ __html: previewHtml }}
+        />
+      </aside>
+    );
+  }
+
   return (
     <section className="shell studio-page">
       <header className="studio-header">
@@ -616,16 +715,16 @@ export default function StudioEditor() {
             </section>
           ) : (
           <>
-          <div className="studio-compare">
+          <div className="studio-compare studio-review-formatting">
             <label className="studio-field">
               <span>보존된 원문</span>
               <textarea value={draft.original} readOnly />
             </label>
-            <label className="studio-field">
-              <span>윤문 후보 · 직접 수정 가능</span>
-              <textarea value={draft.revised} onChange={(event) => update("revised", event.target.value)} />
-            </label>
+            <div>
+              {renderMarkdownEditor("review-body-editor-title")}
+            </div>
           </div>
+          {renderArticlePreview("studio-review-preview")}
           <section className="studio-suggestions">
             <header>
               <h2>수정 제안</h2>
@@ -671,96 +770,9 @@ export default function StudioEditor() {
                 ))}
               </div>
             ) : null}
-            <section className="studio-markdown-editor" aria-labelledby="body-editor-title">
-              <div className="studio-markdown-editor-header">
-                <div>
-                  <strong id="body-editor-title">본문 서식과 이미지</strong>
-                  <span>윤문을 마친 뒤 서식과 이미지를 넣습니다.</span>
-                </div>
-                <span>{referencedImages.length}/5 이미지</span>
-              </div>
-              <div className="studio-format-toolbar" role="toolbar" aria-label="본문 서식">
-                {[
-                  ["bold", "굵게"],
-                  ["quote", "인용"],
-                  ["heading", "소제목"],
-                  ["list", "목록"],
-                  ["link", "링크"],
-                ].map(([format, label]) => (
-                  <button
-                    type="button"
-                    key={format}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => formatMarkdown(format)}
-                  >
-                    {label}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  disabled={imagePending}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => {
-                    rememberEditorSelection();
-                    imageInputRef.current?.click();
-                  }}
-                >
-                  {imagePending ? "이미지 처리 중…" : "사진 선택"}
-                </button>
-                <button
-                  type="button"
-                  disabled={imagePending}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={pasteImageFromClipboard}
-                >
-                  {imagePending ? "이미지 처리 중…" : "클립보드 붙여넣기"}
-                </button>
-                <input
-                  ref={imageInputRef}
-                  className="studio-hidden-file-input"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleSelectedImage}
-                />
-              </div>
-              {showPasteTarget ? (
-                <div
-                  ref={pasteTargetRef}
-                  className="studio-mobile-paste-target"
-                  contentEditable
-                  suppressContentEditableWarning
-                  role="textbox"
-                  aria-label="클립보드 이미지 붙여넣기 영역"
-                  tabIndex={0}
-                  onPaste={handleImagePaste}
-                  onInput={(event) => { event.currentTarget.textContent = ""; }}
-                >
-                  여기를 길게 눌러 ‘붙여넣기’를 선택하세요
-                </div>
-              ) : null}
-              <textarea
-                ref={revisedEditorRef}
-                className="studio-markdown-textarea"
-                value={draft.revised}
-                onChange={(event) => update("revised", event.target.value)}
-                onSelect={(event) => rememberEditorSelection(event.currentTarget)}
-                onClick={(event) => rememberEditorSelection(event.currentTarget)}
-                onKeyUp={(event) => rememberEditorSelection(event.currentTarget)}
-                onPaste={handleImagePaste}
-                aria-label="발행 본문"
-              />
-              <small>이미지는 붙여넣거나 사진에서 선택하면 WebP로 자동 최적화됩니다.</small>
-            </section>
+            {renderMarkdownEditor("publish-body-editor-title")}
           </div>
-          <aside className="studio-preview">
-            <span>{draft.topic || "주제"} · {draft.publishedAt}</span>
-            <h2>{draft.title || "제목"}</h2>
-            <p>{draft.subtitle || "핵심 문장"}</p>
-            <div
-              className="prose studio-preview-prose"
-              dangerouslySetInnerHTML={{ __html: previewHtml }}
-            />
-          </aside>
+          {renderArticlePreview()}
           {publishError ? (
             <div className="studio-notice error" role="alert">
               <p>{publishError}</p>
