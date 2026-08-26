@@ -32,6 +32,12 @@ test("Sungho Lee identity is centralized and JK identity is absent from producti
   assert.doesNotMatch(source, /Junkyung|JK Kim|김준경|junkyung|jk_studio|Junkyung-b-l-s\/junkyung-kim-blog/i);
 });
 
+test("favicon uses the Sungho initials and contains no JK identity", () => {
+  const icon = fs.readFileSync(path.join(root, "app/icon.svg"), "utf8");
+  assert.match(icon, />SH<\/text>/);
+  assert.doesNotMatch(icon, />JK<\/text>/);
+});
+
 test("local and private-network hosts remain private", async () => {
   const { isPrivateHostname, normalizeSiteUrl } = await import("../site.config.js");
   assert.equal(normalizeSiteUrl("https://example.com/"), "https://example.com");
