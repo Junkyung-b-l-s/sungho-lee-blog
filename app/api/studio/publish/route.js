@@ -77,9 +77,16 @@ export async function POST(request) {
       publicUrl: `${siteConfig.siteUrl}/writing/${slug}`,
     });
   } catch (error) {
+    const staleEditSource = Boolean(data.sourcePublishedPath) &&
+      /파일을 찾지 못했습니다/.test(error.message || "");
     return NextResponse.json(
-      { error: error.message || "발행하지 못했습니다." },
-      { status: 502 },
+      {
+        error: staleEditSource
+          ? "삭제된 글의 수정 연결을 해제했습니다. 발행일과 내용을 확인한 뒤 새 글로 다시 발행해 주세요."
+          : error.message || "발행하지 못했습니다.",
+        code: staleEditSource ? "STALE_EDIT_SOURCE" : undefined,
+      },
+      { status: staleEditSource ? 409 : 502 },
     );
   }
 }

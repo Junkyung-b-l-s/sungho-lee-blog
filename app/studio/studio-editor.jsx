@@ -6,6 +6,7 @@ import {
   parseEditorialResponse,
   validatePublishDraft,
 } from "../../lib/studio-draft";
+import { reconcileStoredDraft } from "../../lib/studio-draft-state";
 import { buildEditorialPrompt } from "../../lib/studio-prompt";
 import { renderMarkdown } from "../../lib/markdown";
 import { siteHost } from "../../site.config";
@@ -96,10 +97,35 @@ export default function StudioEditor() {
     let active = true;
     async function restoreDraft() {
       let restoredDraft = emptyDraft;
+      let staleEditCleared = false;
       try {
         const saved = window.localStorage.getItem(STORAGE_KEY);
-        if (saved) restoredDraft = { ...emptyDraft, ...JSON.parse(saved) };
-        if (active) setDraft(restoredDraft);
+        const storedDraft = saved ? JSON.parse(saved) : {};
+        let publishedPosts = null;
+        if (storedDraft.sourcePublishedPath) {
+          try {
+            const response = await fetch("/api/studio/posts", { cache: "no-store" });
+            const result = await response.json();
+            if (response.ok) publishedPosts = result.posts || [];
+          } catch {}
+        }
+        const reconciled = reconcileStoredDraft({
+          emptyDraft,
+          storedDraft,
+          publishedPosts,
+          today: todayInSeoul(),
+        });
+        restoredDraft = reconciled.draft;
+        staleEditCleared = reconciled.staleEditCleared;
+        if (active) {
+          setDraft(restoredDraft);
+          if (staleEditCleared) {
+            setMessage({
+              type: "success",
+              text: "삭제된 글의 수정 연결을 해제했습니다. 작성 내용은 새 글로 유지하고 발행일은 오늘로 바꿨습니다.",
+            });
+          }
+        }
       } catch {}
       try {
         const images = await loadPendingImages();
@@ -495,6 +521,14 @@ export default function StudioEditor() {
         : {};
 
       if (!response.ok) {
+        if (result.code === "STALE_EDIT_SOURCE") {
+          setDraft((current) => ({
+            ...current,
+            sourceOriginalPath: "",
+            sourcePublishedPath: "",
+            publishedAt: todayInSeoul(),
+          }));
+        }
         setPublishError(result.error || `발행하지 못했습니다. (${response.status})`);
         return;
       }
@@ -628,6 +662,14 @@ export default function StudioEditor() {
           dangerouslySetInnerHTML={{ __html: previewHtml[field] }}
         />
       </aside>
+    );
+  }
+
+  if (!loaded) {
+    return (
+      <section className="shell studio-gate" role="status">
+        <p>작성 중인 내용을 불러오는 중…</p>
+      </section>
     );
   }
 

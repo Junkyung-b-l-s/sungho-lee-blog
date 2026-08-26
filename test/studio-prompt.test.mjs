@@ -29,6 +29,11 @@ test("formatting and image tools appear while writing, reviewing, and publishing
   assert.match(editorSource, /draft\.original\.includes\(image\.url\) \|\| revision\.includes\(image\.url\)/);
 });
 
+test("editor waits for stored draft recovery before accepting input", () => {
+  assert.match(editorSource, /if \(!loaded\) \{\s*return \(/);
+  assert.match(editorSource, /작성 중인 내용을 불러오는 중/);
+});
+
 test("publish actions stay inside the form before the sticky preview", () => {
   const actionsIndex = editorSource.indexOf('className="studio-actions studio-publish-actions"');
   const previewIndex = editorSource.lastIndexOf("{renderArticlePreview()}");
